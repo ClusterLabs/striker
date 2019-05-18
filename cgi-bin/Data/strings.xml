@@ -4052,6 +4052,77 @@ The drive failed to detach to the server. The error was:
 #!variable!error!#
 ====
 		</key>
+	
+		<!-- anvil-rehome-server -->
+		<key name="arhs_message_0001"><![CDATA[
+ -=] Anvil! Manage Disks
+
+DESCRIPTION
+
+This program moves a server from one Anvil! node pair to another. For this 
+program to work, certain conditions MUST be met.
+
+1. Passwordless ssh must be setup between the root user on this host and the
+   root user on the target node.
+   
+2. The target node must be a member of a clustet (the peer can be off, but
+   cman and rgmananger must be running on the target).
+
+3. The server must not be running.
+
+4. There must be enough space (disk and RAM) for the server.
+
+5. The local machine must be in the cluster (the peer doesn't have to be).
+
+
+With these conditions being met, the migration is performed thusly;
+
+1. If the server's XML definition file doesn't exist already, a check is made
+   to ensure there is enough RAM available for the server on the local cluster.
+
+2. LVs matching the source LVs are created (unless they already exist).
+
+3. The dd commands are prepared and shown. Each LV can be imaged or skipped.
+
+3.1 For LVs that are imaged; an 'md5sum' is calculated after the migration of 
+    both the source and target LVs, unless '--no-sums' is used. 
+
+4. The definition file is copied over, being modified as needed.
+
+5. If both nodes are running in the local cluster, the server is added to the 
+   local Anvil! system.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialogue and exit.
+
+--new-name
+
+	Optional; If you want to change the name of the server on the local
+	cluster, this switch lets you do it.
+
+--server
+
+	This is the name of the server to be rehomed. It must match the name of
+	the server on that target.
+
+--target 
+
+	This is the host name or IP address of the remote node we will be 
+	pulling the server from. Passwordless SSH must be setup between this
+	machine and root@<target>.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
 		
 	</lang>
 
