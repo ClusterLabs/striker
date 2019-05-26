@@ -1,0 +1,459 @@
+#!/usr/bin/perl
+# 
+# This is a simple tool that shows how much system resources are available and how much is used by servers.
+# 
+# Exit Codes;
+# 0  = OK
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({data => {
+		'anvil-report-usage' =>	{
+			log_db_transactions	=>	0,
+		},
+		path		=>	{
+			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		switches	=>	{
+		},
+		sys		=>	{
+			language		=>	"en_CA",
+			log_language		=>	"en_CA",
+			log_level		=>	2,
+			program_name		=>	$program_name,
+		},
+}});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{'anvil-rehome-server'}{log_db_transactions};
+$an->Readable->base2(1);
+
+gather_data($an);
+
+
+
+$an->nice_exit({exit_code => 0});
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+sub gather_data
+{
+	my ($an) = @_;
+	
+	collect_cpu_data($an);
+	collect_ram_data($an);
+	collect_storage_data($an);
+	#collect_server_data($an);
+	
+	return(0);
+}
+
+# This collects data on existing LVs and VGs.
+sub collect_storage_data
+{
+	my ($an) = @_;
+	
+	# Make sure we've got an updated view of things. Also collect the LVs
+	my $shell_call = $an->data->{path}{pvscan}."; ".$an->data->{path}{vgscan}."; ".$an->data->{path}{lvscan};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
+		{
+			my $state = $1;
+			my $lv    = $2;
+			my $size  = $3;
+			my $bytes = $an->Readable->hr_to_bytes({size => $size});
+			my $vg    = ($lv =~ /^\/dev\/(.*?)\//)[0];
+			
+			$an->data->{lv}{$lv}{on_vg} = $vg;
+			$an->data->{lv}{$lv}{size}  = $bytes;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "lv::${lv}::on_vg", value1 => $an->data->{lv}{$lv}{on_vg}, 
+				name2 => "lv::${lv}::size",  value2 => $an->data->{lv}{$lv}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$lv}{size}}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Get VG info
+	my $in_vg      = "";
+	   $shell_call = $an->data->{path}{vgdisplay}." --units b";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /VG Name (.*+)$/)
+		{
+			$in_vg = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_vg", value1 => $in_vg, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		next if not $in_vg;
+		if (not $line)
+		{
+			$in_vg = "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_vg", value1 => $in_vg, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		if ($line =~ /VG Size (\d+) B/)
+		{
+			$an->data->{vg}{$in_vg}{size} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "vg::${in_vg}::size", value1 => $an->data->{vg}{$in_vg}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{size}}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /PE Size (\d+) B/)
+		{
+			$an->data->{vg}{$in_vg}{pe_size} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "vg::${in_vg}::pe_size", value1 => $an->data->{vg}{$in_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{pe_size}}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Free PE \/ Size \d+ \/ (\d+) B/)
+		{
+			$an->data->{vg}{$in_vg}{free} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "vg::${in_vg}::free", value1 => $an->data->{vg}{$in_vg}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{free}}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This reads in data about the RAM
+sub collect_ram_data
+{
+	my ($an) = @_;
+	
+	my $total_size    = 0;
+	my $size          = "";
+	my $locator       = "";
+	my $manufacturer  = "";
+	my $part_number   = "";
+	my $serial_number = "";
+	my $shell_call = $an->data->{path}{dmidecode}." --type memory";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:\s+/: /;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		if ($line =~ /^Locator: (.*?)$/)
+		{
+			$locator = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "locator", value1 => $locator, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /^Size: (.*?)$/)
+		{
+			$size = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "size", value1 => $size, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If the "size" is "no module installed", we're done here.
+			if ($size !~ /^\d/)
+			{
+				$locator = "";
+				$size    = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "locator", value1 => $locator, 
+					name2 => "size",    value2 => $size, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			
+			# THis reports in 'MB' but it's really 'MiB'.
+			$size = $an->Readable->hr_to_bytes({
+				base2 => 1,
+				size  => $size,
+			});
+			$total_size += $size;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "size",       value1 => $size, 
+				name2 => "total_size", value2 => $total_size, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if not $locator;
+		if (not $line)
+		{
+			if ($size)
+			{
+				$an->data->{ram}{dmi}{locator}{$locator}{size} = $size;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "ram::dmi::locator::${locator}::size", value1 => $an->Readable->comma($an->data->{ram}{dmi}{locator}{$locator}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{ram}{dmi}{locator}{$locator}{size}}).")", 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$size    = "";
+			$locator = "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "size",    value1 => $size, 
+				name2 => "locator", value2 => $locator, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	if (-r '/proc/meminfo')
+	{
+		my $shell_call = "/proc/meminfo";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^(.*?):\s+(\d+.*?)$/)
+			{
+				my $variable = $1;
+				my $size     = $2;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "size",     value2 => $size, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We care about a few variables only.
+				my $say_variable = "";
+				if ($variable eq "SwapTotal")
+				{
+					$say_variable = "swap_total";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "say_variable", value1 => $say_variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($variable eq "SwapFree")
+				{
+					$say_variable = "swap_free";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "say_variable", value1 => $say_variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				next if not $say_variable;
+				
+				# This reports sizes as 'kB', but it's really base2.
+				$size = $an->Readable->hr_to_bytes({
+					base2 => 1,
+					size  => $size,
+				});
+				
+				$an->data->{summary}{ram}{proc}{$say_variable} = $size;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "summary::ram::proc::${say_variable}", value1 => $an->Readable->comma($an->data->{summary}{ram}{proc}{$say_variable})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{proc}{$say_variable}}).")", 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+	}
+	
+	$an->data->{summary}{ram}{size}  = $total_size;
+	$an->data->{summary}{swap}{size} = $an->data->{summary}{ram}{proc}{swap_total};
+	$an->data->{summary}{swap}{free} = $an->data->{summary}{ram}{proc}{swap_free};
+	$an->data->{summary}{swap}{used} = $an->data->{summary}{ram}{proc}{swap_total} - $an->data->{summary}{ram}{proc}{swap_free};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "summary::ram::size",  value1 => $an->Readable->comma($an->data->{summary}{ram}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}}).")", 
+		name2 => "summary::swap::size", value2 => $an->Readable->comma($an->data->{summary}{swap}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}}).")", 
+		name3 => "summary::swap::free", value3 => $an->Readable->comma($an->data->{summary}{swap}{free})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}}).")", 
+		name4 => "summary::swap::used", value4 => $an->Readable->comma($an->data->{summary}{swap}{used})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{used}}).")", 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This reads in data about the CPU
+sub collect_cpu_data
+{
+	my ($an) = @_;
+	my $total_cores   = 0;
+	my $total_threads = 0;
+	my $cores         = 0;
+	my $threads       = 0;
+	my $in_cpu        = "";
+	
+	my $shell_call = $an->data->{path}{dmidecode}." --type processor";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Socket Designation: (.*+)$/)
+		{
+			$in_cpu = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_cpu", value1 => $in_cpu, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $line)
+		{
+			# TODO: Process here?
+			$in_cpu  = "";
+			$cores   = 0;
+			$threads = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "in_cpu",  value1 => $in_cpu, 
+				name2 => "cores",   value2 => $cores, 
+				name3 => "threads", value3 => $threads, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if $in_cpu eq "";
+		
+		if ($line =~ /Core Count: (\d+)$/)
+		{
+			$cores       =  $1;
+			$total_cores += $cores; 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "cores",       value1 => $cores, 
+				name2 => "total_cores", value2 => $total_cores, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Thread Count: (\d+)$/)
+		{
+			$threads       =  $1;
+			$total_threads += $threads; 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "threads",       value1 => $threads, 
+				name2 => "total_threads", value2 => $total_threads, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Read in /proc/cpuinfo.
+	my $model = "";
+	if (-r '/proc/cpuinfo')
+	{
+		my $shell_call = "/proc/cpuinfo";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^model name: (.*?)$/)
+			{
+				my $this_model = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_model", value1 => $this_model, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $model)
+				{
+					$model = $this_model;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "model", value1 => $model, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Record what we found.
+	$an->data->{summary}{cpu}{model}   = $model;
+	$an->data->{summary}{cpu}{cores}   = $total_cores;
+	$an->data->{summary}{cpu}{threads} = $total_threads;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "summary::cpu::model",   value1 => $an->data->{summary}{cpu}{model}, 
+		name2 => "summary::cpu::cores",   value2 => $an->data->{summary}{cpu}{cores}, 
+		name3 => "summary::cpu::threads", value3 => $an->data->{summary}{cpu}{threads}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}

@@ -1498,7 +1498,7 @@ sub find_changes
 					});
 				}
 				
-				# O_o
+				# Did a deleted UPS return?
 				if ($new_apc_ups_model ne $old_apc_ups_model)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -1506,13 +1506,23 @@ sub find_changes
 						name2 => "old_apc_ups_model", value2 => $old_apc_ups_model, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					# This is a 'warning' level alert simply because it should never 
-					# happen and it probably a sign of a bigger problem.
+					# Default is a program error.
+					my $alert_level   = "warning";
+					my $alert_title   = "an_alert_title_0004";
+					my $alert_message = "scan_apc_ups_note_0013";
+					if ($old_apc_ups_model eq "DELETED")
+					{
+						# A UPS returned.
+						$alert_level   = "notice"; 
+						$alert_title   = "an_alert_title_0003";
+						$alert_message = "scan_apc_ups_note_0065";
+					}
+					
 					$an->Alert->register_alert({
-						alert_level		=>	"warning", 
+						alert_level		=>	$alert_level, 
 						alert_agent_name	=>	$THIS_FILE,
-						alert_title_key		=>	"an_alert_title_0004",
-						alert_message_key	=>	"scan_apc_ups_note_0013",
+						alert_title_key		=>	$alert_title,
+						alert_message_key	=>	$alert_message,
 						alert_message_variables	=>	{
 							ups_name		=>	$new_apc_ups_name,
 							new_value		=>	$new_apc_ups_model,

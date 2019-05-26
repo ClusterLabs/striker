@@ -10,7 +10,9 @@
 # 
 # Exit Codes;
 # 0  = OK
-# 1  = 
+# 1  = The --server or --target switch wasn't passed.
+# 2  = Server not found (or connection to target error)
+# 3  = Failed to read (or parse) the server's XML file.
 # 
 
 use strict;
@@ -59,6 +61,13 @@ my $an = AN::Tools->new({data => {
 			log_level		=>	2,
 			program_name		=>	$program_name,
 		},
+		dd		=>	{
+			block_size		=>	"",
+		},
+		definition	=>	{
+			source_xml		=>	"",
+			new_xml			=>	"",
+		},
 }});
 
 # Initialize.
@@ -80,12 +89,374 @@ if (($an->data->{switches}{h})   or
 	$an->nice_exit({exit_code => 0});
 }
 
+# Is there a target and server given?
+my $proceed = 1;
+if (not $an->data->{switches}{target})
+{
+	$proceed = 0;
+	print $an->String->get({key => "arhs_error_0001"})."\n";
+}
+if (not $an->data->{switches}{server})
+{
+	$proceed = 0;
+	print $an->String->get({key => "arhs_error_0002"})."\n";
+}
+if (not $proceed)
+{
+	print $an->String->get({key => "arhs_warning_0001"})."\n";
+	$an->nice_exit({exit_code => 1});
+}
+
+# Find what anvil the target is in. This also verifies that we have passwordless SSH working.
+verify_target_is_ready($an);
+
 ### Get the 'bs=' value from the VG's extent size.
 
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Find what anvil the target is in. This also verifies that we have passwordless SSH working.
+sub verify_target_is_ready
+{
+	my ($an) = @_;
+	
+	# First, can i log into the target? 
+	check_server($an);
+	
+	# If we're here, the server was found and it is off.
+	print $an->String->get({key => "arhs_message_0002"})."\n";
+	
+	# Read in the XML definition file
+	read_definition($an);
+
+	return(0);
+}
+
+# Read in and parse the source XML file.
+sub read_definition
+{
+	my ($an) = @_;
+	
+	# Setup some variables.
+	my $target = $an->data->{switches}{target};
+	my $server = $an->data->{switches}{server};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target,
+		name2 => "server", value2 => $server,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $in_block   = 0;
+	my $cores      = 0;
+	my $ram        = 0;
+	my $disks      = 0;
+	my $xml_file   = "/shared/definitions/".$server.".xml";
+	my $source_xml = "";
+	my $shell_call = $an->data->{path}{ssh}." ".$target." \"cat ".$xml_file."\"";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$source_xml .= $line."\n";
+		
+		if (($line =~ /<memory unit='(.*?)'>(\d+)<\/memory>/) or ($line =~ /<currentMemory unit='(.*?)'>(\d+)<\/currentMemory>/))
+		{
+			my $units  = $1;
+			my $number = $2;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "units",  value1 => $units, 
+				name2 => "number", value2 => $number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $bytes = $an->Readable->hr_to_bytes({base2 => 1, size => $number, type => $units});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bytes", value1 => $bytes, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($bytes > $ram)
+			{
+				$ram = $bytes;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ram", value1 => $ram, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		if ($line =~ /<vcpu placement='static'>(\d+)<\/vcpu>/)
+		{
+			$cores = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cores", value1 => $cores, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if ($line =~ /<disk type='block'/)
+		{
+			$in_block = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_block", value1 => $in_block, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if ($in_block)
+		{
+			if ($line =~ /<\/disk>/)
+			{
+				$in_block = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_block", value1 => $in_block, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			elsif ($line =~ /<source dev='(.*?)'\/>/)
+			{
+				my $lv = $1;
+				my ($vg, $name) = ($lv =~ /\/dev\/(.*?)\/(.*)$/);
+				$disks++;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "lv",    value1 => $lv, 
+					name2 => "vg",    value2 => $vg, 
+					name3 => "name",  value3 => $name, 
+					name4 => "disks", value4 => $disks, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{lv}{$name}{source}{path} = $lv;
+				$an->data->{lv}{$name}{source}{vg}   = $vg;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "lv::${name}::source::path", value1 => $an->data->{lv}{$name}{source}{path}, 
+					name2 => "lv::${name}::source::vg",   value2 => $an->data->{lv}{$name}{source}{vg}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Did we read the XML?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "cores", value1 => $cores, 
+		name2 => "ram",   value2 => $ram." (".$an->Readable->bytes_to_hr({'bytes' => $ram}).")", 
+		name3 => "disks", value3 => $disks, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $cores) or (not $ram) or (not $disks))
+	{
+		print $an->String->get({key => "arhs_error_0003", variables => { file => $xml_file, output => $source_xml }})."\n";
+		$an->nice_exit({exit_code => 3});
+	}
+	
+	$an->data->{server}{cores} = $cores;
+	$an->data->{server}{ram}   = $ram;
+	$an->data->{server}{disks} = $disks;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "server::cores", value1 => $an->data->{server}{cores}, 
+		name2 => "server::ram",   value2 => $an->data->{server}{ram}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{ram}}).")", 
+		name3 => "server::disks", value3 => $an->data->{server}{disks}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Get the list of LV sizes.
+	my $lv_path    = "";
+	my $lv_size    = 0;
+	   $shell_call = $an->data->{path}{ssh}." ".$target." \"lvdisplay --units b\"";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /LV Path (\/dev\/.*)$/)
+		{
+			$lv_path = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "lv_path", value1 => $lv_path, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if not $lv_path;
+		
+		if ($line =~ /LV Size (\d+) B/)
+		{
+			$lv_size = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "lv_size", value1 => $lv_size." (".$an->Readable->bytes_to_hr({'bytes' => $lv_size}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if (not $line)
+		{
+			if ($lv_size)
+			{
+				# Is this an LV we care about?
+				foreach my $name (sort {$a cmp $b} keys %{$an->data->{lv}})
+				{
+					# How big is the LV?
+					my $this_lv = $an->data->{lv}{$name}{source}{path};
+					if ($lv_path eq $this_lv)
+					{
+						# Found it.
+						$an->data->{lv}{$name}{source}{size} = $lv_size;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "lv::${name}::source::size", value1 => $an->data->{lv}{$name}{source}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$name}{source}{size}}).")", 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+			$lv_path = "";
+			$lv_size = 0;
+		}
+	}
+	close $file_handle;
+	
+	# For each LV, read the parent VG extent size.
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{lv}})
+	{
+		# How big is the LV?
+		my $this_vg = $an->data->{lv}{$name}{source}{vg};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_vg", value1 => $this_vg, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Read the physical extent size?
+		if ((not exists $an->data->{vg}{$this_vg}{pe_size}) or (not $an->data->{vg}{$this_vg}{pe_size}))
+		{
+			# Read in
+			my $extent_size = 0;
+			my $shell_call  = $an->data->{path}{ssh}." ".$target." \"vgdisplay ".$this_vg." --units b\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $an->String->clean_spaces({string => $_});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /PE Size (\d+) B/)
+				{
+					$an->data->{vg}{$this_vg}{pe_size} = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "vg::${this_vg}::pe_size", value1 => $an->data->{vg}{$this_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$this_vg}{pe_size}}).")",
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+			}
+			close $file_handle;
+			
+			if (not $an->data->{vg}{$this_vg}{pe_size})
+			{
+				# Failed to find the VG's PE size.
+				print $an->String->get({key => "arhs_error_0006", variables => { vg => $this_vg }})."\n";
+				$an->nice_exit({exit_code => 4});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "source_xml", value1 => $source_xml, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Summarize.
+	print $an->String->get({key => "arhs_message_0003", variables => { 
+		ram   => $an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{ram}}),
+		cpu   => $an->data->{server}{cores},
+		disks => $an->data->{server}{disks},
+	}})."\n";
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{lv}})
+	{
+		my $logical_volume = $an->data->{lv}{$name}{source}{path};
+		my $volume_group   = $an->data->{lv}{$name}{source}{vg};
+		my $lv_size        = $an->data->{lv}{$name}{source}{size};
+		my $pe_size        = $an->data->{vg}{$volume_group}{pe_size};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "logical_volume", value1 => $logical_volume, 
+			name2 => "volume_group",   value2 => $volume_group, 
+			name3 => "lv_size",        value3 => $lv_size." (".$an->Readable->bytes_to_hr({'bytes' => $lv_size}).")", 
+			name4 => "pe_size",        value4 => $pe_size." (".$an->Readable->bytes_to_hr({'bytes' => $pe_size}).")", 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		print $an->String->get({key => "arhs_message_0004", variables => { 
+			lv    => $logical_volume,
+			size  => $an->Readable->bytes_to_hr({'bytes' => $lv_size}),
+			block => $an->Readable->bytes_to_hr({'bytes' => $pe_size}),
+		}})."\n";
+	}
+	
+	return(0);
+}
+
+# This looks to find the server and that it is stopped.
+sub check_server
+{
+	my ($an) = @_;
+	
+	# Setup some variables.
+	my $target = $an->data->{switches}{target};
+	my $server = $an->data->{switches}{server};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target,
+		name2 => "server", value2 => $server,
+	}, file => $THIS_FILE, line => __LINE__});
+
+	my $found       = 0;
+	my $return_code = "";
+	my $output      = "";
+	my $state       = "";
+	my $shell_call  = $an->data->{path}{ssh}." ".$target." \"clustat\" 2>&1";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$output .= $line."\n";
+		$line   =  $an->String->clean_spaces({string => $line});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /vm:$server .*? (\w+)$/)
+		{
+			$found = 1;
+			$state = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "found", value1 => $found, 
+				name2 => "state", value2 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	if (not $found)
+	{
+		print $an->String->get({key => "arhs_error_0003", variables => { output => $output }})."\n";
+		$an->nice_exit({exit_code => 2});
+	}
+	
+	if (($state ne "stopped") && ($state ne "disabled"))
+	{
+		print $an->String->get({key => "arhs_error_0004", variables => { 'state' => $state }})."\n";
+		$an->nice_exit({exit_code => 3});
+	}
+	
+	return(0);
+}
 
 # Print the usage information.
 sub print_usage

@@ -4123,6 +4123,41 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		<key name="arhs_message_0002"><![CDATA[The server: [#!data!switches::server!#] was found on the target and it is off. Gathering migration data now.]]></key>
+		<key name="arhs_message_0003"><![CDATA[
+- RAM: ..... [#!variable!ram!#]
+- CPU Cores: [#!variable!cpu!#]
+- Disks: ... [#!variable!disks!#]
+		]]></key>
+		<key name="arhs_message_0004"><![CDATA[ - Disk: ... [#!variable!lv!#], size: [#!variable!size!#], block size: [#!variable!block!#]]]></key>
+		
+		<!-- errors -->
+		<key name="arhs_error_0001"><![CDATA[No target node was passed. Please specify with '--target <name_or_ip>'.]]></key>
+		<key name="arhs_error_0002"><![CDATA[No server name was passed. Please specify with '--server <name>'.]]></key>
+		<key name="arhs_error_0003"><![CDATA[
+The server: [#!data!switches::server!#] wasn't found on the target. 
+
+Perhaps there was a problem talking to the target (is passwordless SSH setup?).
+Is the server name correct (it is case sensitive)?
+
+Output (if any) is below;
+====
+#!variable!output!#
+====
+		]]></key>
+		<key name="arhs_error_0004"><![CDATA[The server: [#!data!switches::server!#] is: [#!variable!state!#]. It must be stopped (or disabled) before we can proceed.]]></key>
+		<key name="arhs_error_0005"><![CDATA[
+Failed to read (or parse) ther server's definition file: [#!variables!file!#].
+
+Output (error of what was read) is below;
+====
+#!variable!output!#
+====
+		]]></key>
+		<key name="arhs_error_0006"><![CDATA[Failed to fing the physical extent size for the volume group: [#!variable!vg!#].]]></key>
+		
+		<!-- warnings -->
+		<key name="arhs_warning_0001">Use '--help' for usage information.</key>
 		
 	</lang>
 
