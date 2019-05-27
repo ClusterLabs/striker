@@ -995,7 +995,7 @@
 		<key name="state_0020">Already exists</key>
 		<key name="state_0021">No Access</key>
 		<key name="state_0022">Online</key>
-		<key name="state_0023">#!free!#</key>
+		<key name="state_0023">Ejected</key>
 		<key name="state_0024">Everything Installed</key>
 		<key name="state_0025"><![CDATA[Packages Missing:<br /><span class="code">#!variable!missing!#</span> on node: [#!variable!node!#].]]></key>
 		<key name="state_0026">Updated</key>

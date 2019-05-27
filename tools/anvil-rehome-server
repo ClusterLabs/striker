@@ -142,7 +142,7 @@ sub read_definition
 	# Setup some variables.
 	my $target = $an->data->{switches}{target};
 	my $server = $an->data->{switches}{server};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "server", value2 => $server,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -154,7 +154,7 @@ sub read_definition
 	my $xml_file   = "/shared/definitions/".$server.".xml";
 	my $source_xml = "";
 	my $shell_call = $an->data->{path}{ssh}." ".$target." \"cat ".$xml_file."\"";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -178,14 +178,14 @@ sub read_definition
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $bytes = $an->Readable->hr_to_bytes({base2 => 1, size => $number, type => $units});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "bytes", value1 => $bytes, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($bytes > $ram)
 			{
 				$ram = $bytes;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "ram", value1 => $ram, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -272,14 +272,14 @@ sub read_definition
 	{
 		chomp;
 		my $line = $an->String->clean_spaces({string => $_});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /LV Path (\/dev\/.*)$/)
 		{
 			$lv_path = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "lv_path", value1 => $lv_path, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -288,7 +288,7 @@ sub read_definition
 		if ($line =~ /LV Size (\d+) B/)
 		{
 			$lv_size = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "lv_size", value1 => $lv_size." (".$an->Readable->bytes_to_hr({'bytes' => $lv_size}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -305,7 +305,7 @@ sub read_definition
 					{
 						# Found it.
 						$an->data->{lv}{$name}{source}{size} = $lv_size;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "lv::${name}::source::size", value1 => $an->data->{lv}{$name}{source}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$name}{source}{size}}).")", 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -322,7 +322,7 @@ sub read_definition
 	{
 		# How big is the LV?
 		my $this_vg = $an->data->{lv}{$name}{source}{vg};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "this_vg", value1 => $this_vg, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -332,7 +332,7 @@ sub read_definition
 			# Read in
 			my $extent_size = 0;
 			my $shell_call  = $an->data->{path}{ssh}." ".$target." \"vgdisplay ".$this_vg." --units b\"";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -346,7 +346,7 @@ sub read_definition
 				if ($line =~ /PE Size (\d+) B/)
 				{
 					$an->data->{vg}{$this_vg}{pe_size} = $1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "vg::${this_vg}::pe_size", value1 => $an->data->{vg}{$this_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$this_vg}{pe_size}}).")",
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -404,7 +404,7 @@ sub check_server
 	# Setup some variables.
 	my $target = $an->data->{switches}{target};
 	my $server = $an->data->{switches}{server};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "server", value2 => $server,
 	}, file => $THIS_FILE, line => __LINE__});

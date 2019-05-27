@@ -80,7 +80,126 @@ sub gather_data
 	collect_cpu_data($an);
 	collect_ram_data($an);
 	collect_storage_data($an);
-	#collect_server_data($an);
+	collect_server_data($an);
+	
+	return(0);
+}
+
+# This reads in the XML files for the servers to report what each server is using.
+sub collect_server_data
+{
+	my ($an) = @_;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::shared_definitions", value1 => $an->data->{path}{shared_definitions}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $an->data->{path}{shared_definitions});
+	while(my $file = readdir(DIRECTORY))
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "file", value1 => $file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		next if $file !~ /\.xml$/;
+		my $full_file = $an->data->{path}{shared_definitions}."/".$file;
+		next if not -f $full_file;
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "full_file", value1 => $full_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($full_file, ForceArray => 1);
+		
+		#print Dumper $data;
+		my $current_memory_number = $data->{currentMemory}->[0]->{content};
+		my $current_memory_units  = $data->{currentMemory}->[0]->{unit};
+		my $current_memory_bytes  = $an->Readable->hr_to_bytes({size => $current_memory_number, type => $current_memory_units});
+		my $memory_number         = $data->{memory}->[0]->{content};
+		my $memory_units          = $data->{memory}->[0]->{unit};
+		my $memory_bytes          = $an->Readable->hr_to_bytes({size => $current_memory_number, type => $current_memory_units});
+		my $ram                   = $current_memory_bytes > $memory_bytes ? $current_memory_bytes : $memory_bytes;
+		my $cores                 = $data->{vcpu}->[0]->{content};
+		my $cpu_mode              = $data->{cpu}->[0]->{mode};
+		my $name                  = $data->{name}->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "current_memory_number", value1  => $an->Readable->comma($current_memory_number), 
+			name2  => "current_memory_units",  value2  => $current_memory_units, 
+			name3  => "current_memory_bytes",  value3  => $current_memory_bytes." (".$an->Readable->bytes_to_hr({'bytes' => $current_memory_bytes}).")", 
+			name4  => "memory_number",         value4  => $an->Readable->comma($memory_number), 
+			name5  => "memory_units",          value5  => $memory_units, 
+			name6  => "memory_bytes",          value6  => $memory_bytes." (".$an->Readable->bytes_to_hr({'bytes' => $memory_bytes}).")", 
+			name7  => "ram",                   value7  => $ram." (".$an->Readable->bytes_to_hr({'bytes' => $ram}).")", 
+			name8  => "cores",                 value8  => $cores, 
+			name9  => "cpu_mode",              value9  => $cpu_mode, 
+			name10 => "name",                  value10 => $name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{server}{$name}{cpu}{cores} = $cores;
+		$an->data->{server}{$name}{cpu}{mode}  = $cpu_mode;
+		$an->data->{server}{$name}{ram}        = $ram;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "server::${name}::cpu::cores", value1 => $an->data->{server}{$name}{cpu}{cores}, 
+			name2 => "server::${name}::cpu::mode",  value2 => $an->data->{server}{$name}{cpu}{mode}, 
+			name3 => "server::${name}::ram",        value3 => $an->data->{server}{$name}{ram}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#print Dumper $data->{devices}->[0]->{disk};
+		foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
+		{
+			my $device_type  = $hash_ref->{device};
+			my $source       = $hash_ref->{source}->[0]->{dev} ? $hash_ref->{source}->[0]->{dev} : "";
+			my $guest_device = $hash_ref->{target}->[0]->{dev};
+			my $bus          = $hash_ref->{target}->[0]->{bus};
+			my $size         = 0;
+			if ((not $source) && ($device_type eq "cdrom"))
+			{
+				$source = $an->String->get({key => "state_0023"});
+			}
+			elsif (($device_type eq "disk") && ($an->data->{lv}{$source}{size}))
+			{
+				$size = $an->data->{lv}{$source}{size};
+			}
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "device_type",  value1 => $device_type, 
+				name2 => "source",       value2 => $source, 
+				name3 => "guest_device", value3 => $guest_device, 
+				name4 => "bus",          value4 => $bus, 
+				name5 => "size",         value5 => $size." (".$an->Readable->bytes_to_hr({'bytes' => $size}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}    = $bus;
+			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{source} = $source;
+			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}   = $size;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "server::${name}::block::${device_type}::${guest_device}::bus",    value1 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}, 
+				name2 => "server::${name}::block::${device_type}::${guest_device}::source", value2 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{source}, 
+				name3 => "server::${name}::block::${device_type}::${guest_device}::size",   value3 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}}).")",  
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		#print Dumper $data->{devices}->[0]->{interface};
+		foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
+		{
+			my $bridge = $hash_ref->{source}->[0]->{bridge};
+			my $model  = $hash_ref->{model}->[0]->{type};
+			my $mac    = $hash_ref->{mac}->[0]->{address};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "bridge", value1 => $bridge, 
+				name2 => "model",  value2 => $model, 
+				name3 => "mac",    value3 => $mac,  
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{server}{$name}{network}{$mac}{bridge} = $bridge;
+			$an->data->{server}{$name}{network}{$mac}{model}  = $model;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "server::${name}::network::${mac}::bridge", value1 => $an->data->{server}{$name}{network}{$mac}{bridge}, 
+				name2 => "server::${name}::network::${mac}::model",  value2 => $an->data->{server}{$name}{network}{$mac}{model}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	closedir(DIRECTORY);
 	
 	return(0);
 }
@@ -100,7 +219,7 @@ sub collect_storage_data
 	{
 		chomp;
 		my $line = $an->String->clean_spaces({string => $_});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -140,7 +259,7 @@ sub collect_storage_data
 		if ($line =~ /VG Name (.*+)$/)
 		{
 			$in_vg = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_vg", value1 => $in_vg, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -149,7 +268,7 @@ sub collect_storage_data
 		if (not $line)
 		{
 			$in_vg = "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_vg", value1 => $in_vg, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
