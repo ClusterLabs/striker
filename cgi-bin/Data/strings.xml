@@ -1013,7 +1013,7 @@
 		<key name="state_0038">Enabled</key>
 		<key name="state_0039">Lit</key>
 		<key name="state_0040">Off</key>
-		<key name="state_0041">#!free!#</key>
+		<key name="state_0041">compatibility</key>
 		<key name="state_0042">Partition Error</key>
 		<key name="state_0043">Partition Resized</key>
 		<key name="state_0044">#!free!#</key>

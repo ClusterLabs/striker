@@ -65,7 +65,7 @@ $an->Readable->base2(1);
 
 gather_data($an);
 
-
+report($an);
 
 $an->nice_exit({exit_code => 0});
 
@@ -73,6 +73,128 @@ $an->nice_exit({exit_code => 0});
 # Functions                                                                                                 #
 #############################################################################################################
 
+# Format and print.
+sub report
+{
+	my ($an) = @_;
+	
+	if ($an->data->{switches}{pretty})
+	{
+		pretty_report($an);
+	}
+	else
+	{
+		parsable_report($an);
+	}
+	
+	return(0);
+}
+
+# Show the results for a human to read.
+sub pretty_report
+{
+	my ($an) = @_;
+	
+	print "-=] Servers:\n\n";
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{server}})
+	{
+		print "Name: $name 
+ - RAM: ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}})." 
+ - CPU Cores / Mode: ".$an->data->{server}{$name}{cpu}{cores}." / ".$an->data->{server}{$name}{cpu}{mode}."\n";
+		foreach my $device_type (sort {$a cmp $b} keys %{$an->data->{server}{$name}{block}})
+		{
+			foreach my $guest_device (sort {$a cmp $b} keys %{$an->data->{server}{$name}{block}{$device_type}})
+			{
+				print "  - Disk type / source / size / bus / guest device: $device_type / ".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{source}." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}})." /  ".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}." / $guest_device\n";
+			}
+		}
+		foreach my $mac (sort {$a cmp $b} keys %{$an->data->{server}{$name}{network}})
+		{
+			print "  - Network MAC / Model / Bridge: $mac / ".$an->data->{server}{$name}{network}{$mac}{model}." / ".$an->data->{server}{$name}{network}{$mac}{bridge}."\n";
+		}
+		print "\n";
+	}
+	
+	print "-=] Host: 
+
+CPU  - Cores / Threads: ".$an->data->{summary}{cpu}{cores}." / ".$an->data->{summary}{cpu}{threads}." / Model: ".$an->data->{summary}{cpu}{model}." 
+RAM  - Size / Allocated / Available: ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{allocated}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{available}})."
+Swap - Size / Used / Free: ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{used}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}})."\n\n";
+	
+	return(0);
+}
+
+# Show the data in a machine-parsable way.
+sub parsable_report
+{
+	my ($an) = @_;
+	
+	print "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<usage>
+	<cpu>
+		<model>".$an->data->{summary}{cpu}{model}."</model>
+		<cores>".$an->data->{summary}{cpu}{cores}."</cores>
+		<threads>".$an->data->{summary}{cpu}{threads}."</threads>
+	</cpu>
+	<ram>
+		<size>".$an->data->{summary}{ram}{size}."</size>
+		<free>".$an->data->{summary}{ram}{free}."</free>
+		<available>".$an->data->{summary}{ram}{available}."</available>
+		<allocated>".$an->data->{summary}{ram}{allocated}."</allocated>
+	</ram>
+	<swap>
+		<size>".$an->data->{summary}{swap}{size}."</size>
+		<free>".$an->data->{summary}{swap}{free}."</free>
+		<used>".$an->data->{summary}{swap}{used}."</used>
+	</swap>
+";
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{server}})
+	{
+		print "\t<server>
+		<name><![CDATA[$name]]></name>
+		<ram>".$an->data->{server}{$name}{ram}."</ram>
+		<cpu>
+			<cores>".$an->data->{server}{$name}{cpu}{cores}."</cores>
+			<mode>".$an->data->{server}{$name}{cpu}{mode}."</mode>
+		</cpu>
+";
+
+		# Pull out storage
+		foreach my $device_type (sort {$a cmp $b} keys %{$an->data->{server}{$name}{block}})
+		{
+			foreach my $guest_device (sort {$a cmp $b} keys %{$an->data->{server}{$name}{block}{$device_type}})
+			{
+				print "\t\t<block>
+			<device_type>$device_type</device_type>
+			<guest_device>$guest_device</guest_device>
+			<bus>".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}."</bus>
+			<source>".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{source}."</source>
+			<size>".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}."</size>
+		</block>
+";
+			}
+		}
+		
+		# Pull out network
+		foreach my $mac (sort {$a cmp $b} keys %{$an->data->{server}{$name}{network}})
+		{
+				print "\t\t<interface>
+			<mac>$mac</mac>
+			<bridge>".$an->data->{server}{$name}{network}{$mac}{bridge}."</bridge>
+			<model>".$an->data->{server}{$name}{network}{$mac}{model}."</model>
+		</interface>
+";
+		}
+	print "\t</server>
+";
+	}
+	
+	print "</usage>\n";
+	
+	return(0);
+}
+
+# Collect the data we want
 sub gather_data
 {
 	my ($an) = @_;
@@ -89,6 +211,8 @@ sub gather_data
 sub collect_server_data
 {
 	my ($an) = @_;
+	
+	$an->data->{summary}{ram}{allocated} = 0;
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::shared_definitions", value1 => $an->data->{path}{shared_definitions}, 
@@ -121,7 +245,7 @@ sub collect_server_data
 		my $memory_bytes          = $an->Readable->hr_to_bytes({size => $current_memory_number, type => $current_memory_units});
 		my $ram                   = $current_memory_bytes > $memory_bytes ? $current_memory_bytes : $memory_bytes;
 		my $cores                 = $data->{vcpu}->[0]->{content};
-		my $cpu_mode              = $data->{cpu}->[0]->{mode};
+		my $cpu_mode              = $data->{cpu}->[0]->{mode} ? $data->{cpu}->[0]->{mode} : $an->String->get({key => "state_0041"});;
 		my $name                  = $data->{name}->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 			name1  => "current_memory_number", value1  => $an->Readable->comma($current_memory_number), 
@@ -136,13 +260,15 @@ sub collect_server_data
 			name10 => "name",                  value10 => $name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{server}{$name}{cpu}{cores} = $cores;
-		$an->data->{server}{$name}{cpu}{mode}  = $cpu_mode;
-		$an->data->{server}{$name}{ram}        = $ram;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->data->{server}{$name}{cpu}{cores} =  $cores;
+		$an->data->{server}{$name}{cpu}{mode}  =  $cpu_mode;
+		$an->data->{server}{$name}{ram}        =  $ram;
+		$an->data->{summary}{ram}{allocated}   += $ram;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "server::${name}::cpu::cores", value1 => $an->data->{server}{$name}{cpu}{cores}, 
 			name2 => "server::${name}::cpu::mode",  value2 => $an->data->{server}{$name}{cpu}{mode}, 
-			name3 => "server::${name}::ram",        value3 => $an->data->{server}{$name}{ram}, 
+			name3 => "server::${name}::ram",        value3 => $an->data->{server}{$name}{ram}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}}).")", 
+			name4 => "summary::ram::allocated",     value4 => $an->data->{summary}{ram}{allocated}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{allocated}}).")", 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		#print Dumper $data->{devices}->[0]->{disk};
@@ -201,6 +327,14 @@ sub collect_server_data
 	}
 	closedir(DIRECTORY);
 	
+	# Calculate the available RAM; We take a simple 4GiB off as our 'free' comes from dmi, not /proc/meminfo
+	$an->data->{summary}{ram}{free}      = $an->data->{summary}{ram}{size} - $an->data->{summary}{ram}{allocated};
+	$an->data->{summary}{ram}{available} = $an->data->{summary}{ram}{free} - (4 * (2 ** 30));
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "summary::ram::free",      value1 => $an->data->{summary}{ram}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{free}}).")", 
+		name2 => "summary::ram::available", value2 => $an->data->{summary}{ram}{available}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{available}}).")", 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	return(0);
 }
 
@@ -209,12 +343,15 @@ sub collect_storage_data
 {
 	my ($an) = @_;
 	
-	# Make sure we've got an updated view of things. Also collect the LVs
-	my $shell_call = $an->data->{path}{pvscan}."; ".$an->data->{path}{vgscan}."; ".$an->data->{path}{lvscan};
+	# Collect the LVs
+	my $lv_path    = "";
+	my $lv_size    = 0;
+	my $on_vg      = "";
+	my $shell_call = $an->data->{path}{lvdisplay}." --units b";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -223,20 +360,43 @@ sub collect_storage_data
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
+		if ($line =~ /LV Path (\/dev\/.*)$/)
 		{
-			my $state = $1;
-			my $lv    = $2;
-			my $size  = $3;
-			my $bytes = $an->Readable->hr_to_bytes({size => $size});
-			my $vg    = ($lv =~ /^\/dev\/(.*?)\//)[0];
-			
-			$an->data->{lv}{$lv}{on_vg} = $vg;
-			$an->data->{lv}{$lv}{size}  = $bytes;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "lv::${lv}::on_vg", value1 => $an->data->{lv}{$lv}{on_vg}, 
-				name2 => "lv::${lv}::size",  value2 => $an->data->{lv}{$lv}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$lv}{size}}).")", 
+			$lv_path = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "lv_path", value1 => $lv_path, 
 			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if not $lv_path;
+		
+		if ($line =~ /VG Name (.*)$/)
+		{
+			$on_vg = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "on_vg", value1 => $on_vg, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /LV Size (\d+) B/)
+		{
+			$lv_size = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "lv_size", value1 => $lv_size." (".$an->Readable->bytes_to_hr({'bytes' => $lv_size}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if (not $line)
+		{
+			if ($lv_size)
+			{
+				$an->data->{lv}{$lv_path}{on_vg} = $on_vg;
+				$an->data->{lv}{$lv_path}{size}  = $lv_size;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "lv::${lv_path}::on_vg", value1 => $an->data->{lv}{$lv_path}{on_vg}, 
+					name2 => "lv::${lv_path}::size",  value2 => $an->data->{lv}{$lv_path}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$lv_path}{size}}).")", 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			$lv_path = "";
+			$lv_size = 0;
+			$on_vg   = "";
 		}
 	}
 	close $file_handle;
