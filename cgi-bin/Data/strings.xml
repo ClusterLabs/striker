@@ -485,13 +485,13 @@
 		<key name="row_0001">IPMI User</key>
 		<key name="row_0002">Notes</key>
 		<key name="row_0003">IPMI via Lanplus</key>
-		<key name="row_0004">#!free!#</key>
+		<key name="row_0004">Type</key>
 		<key name="row_0005">#!string!brand_0003!# Name</key>
-		<key name="row_0006">#!free!#</key>
-		<key name="row_0007">#!free!#</key>
-		<key name="row_0008">#!free!#</key>
-		<key name="row_0009">#!free!#</key>
-		<key name="row_0010">#!free!#</key>
+		<key name="row_0006">CPU</key>
+		<key name="row_0007">Bus</key>
+		<key name="row_0008">Source</key>
+		<key name="row_0009">MAC</key>
+		<key name="row_0010">Bridge</key>
 		<key name="row_0011">#!free!#</key>
 		<key name="row_0012">#!free!#</key>
 		<key name="row_0013">#!free!#</key>
@@ -1331,7 +1331,13 @@
 		<key name="message_0005">Both nodes appear to already be off. Proceeding with UPS power off.</key>
 		<key name="message_0006"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one of the servers did not shut down.<br />Please manually shut down the server (or wait if it is shutting down but taking time), then try again.]]></key>
 		<key name="message_0007">A lock on the database is being held by: [#!variable!host_name!#]. The lock will expire in: [#!variable!timeout!#] second(s) unless it is refreshed.</key>
-		<key name="message_0008">#!free!#</key>
+		<key name="message_0008">
+-=] Host: 
+
+CPU  - #!variable!model!# (#!variable!cores!#c/#!variable!cores!#t)
+RAM  - #!variable!ram_size!# total, #!variable!ram_allocated!# allocated, #!variable!ram_available!# available for servers
+Swap - #!variable!swap_size!# total, #!variable!swap_used!# used, #!variable!swap_free!# free
+		</key>
 		<key name="message_0009">#!free!#</key>
 		<key name="message_0010">#!free!#</key>
 		<key name="message_0011">#!free!#</key>

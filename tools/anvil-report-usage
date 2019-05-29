@@ -95,31 +95,147 @@ sub pretty_report
 {
 	my ($an) = @_;
 	
-	print "-=] Servers:\n\n";
+	
+	my $name_length = 0;
+	my $source_length = 0;
+	my $cpu_length = 0;
+	
+	my $say_cpu         = $an->String->get({key => "row_0006"});
+	my $say_storage     = $an->String->get({key => "title_0077"});
+	my $say_network     = $an->String->get({key => "title_0089"});
+	my $say_server_name = $an->String->get({key => "row_0114"});
+	my $say_ram         = $an->String->get({key => "title_0076"});
+	my $say_cores       = $an->String->get({key => "title_0078"});
+	my $say_type        = $an->String->get({key => "row_0004"});
+	my $say_bus         = $an->String->get({key => "row_0007"});
+	my $say_target      = $an->String->get({key => "row_0308"});
+	my $say_size        = $an->String->get({key => "row_0060"});
+	my $say_source      = $an->String->get({key => "row_0008"});
+	my $say_mac         = $an->String->get({key => "row_0009"});
+	my $say_model       = $an->String->get({key => "row_0046"});
+	my $say_bridge      = $an->String->get({key => "row_0010"});
+	
+	my $length_server_name    = length($say_server_name);
+	my $length_ram            = length($say_ram);
+	my $length_cpu_cores      = length($say_cores);
+	my $length_cpu_type       = length($say_type);
+	my $length_storage_type   = length($say_type);
+	my $length_storage_bus    = length($say_bus);
+	my $length_storage_target = length($say_target);
+	my $length_storage_size   = length($say_size);
+	my $length_storage_source = length($say_source);
+	my $length_network_mac    = length($say_mac);
+	my $length_network_model  = length($say_model);
+	my $length_network_bridge = length($say_bridge);
+	
+	# The first pass figures out maximum lengths and prepares the arrays.
 	foreach my $name (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
-		print "Name: $name 
- - RAM: ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}})." 
- - CPU Cores / Mode: ".$an->data->{server}{$name}{cpu}{cores}." / ".$an->data->{server}{$name}{cpu}{mode}."\n";
-		foreach my $device_type (sort {$a cmp $b} keys %{$an->data->{server}{$name}{block}})
+		
+		my $ram   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}});
+		my $cores = $an->data->{server}{$name}{cpu}{cores};
+		my $type  = $an->data->{server}{$name}{cpu}{mode};
+		
+		if (length($name)  > $length_server_name) { $length_server_name = length($name);  }
+		if (length($ram)   > $length_ram)         { $length_ram         = length($ram);   }
+		if (length($cores) > $length_cpu_cores)   { $length_cpu_cores  = length($cores); }
+		if (length($type)  > $length_cpu_type)    { $length_cpu_type   = length($type);  }
+		
+		$an->data->{server}{$name}{disk_array} = [];
+		$an->data->{server}{$name}{nic_array}  = [];
+		foreach my $device_type (sort {$b cmp $a} keys %{$an->data->{server}{$name}{block}})
 		{
 			foreach my $guest_device (sort {$a cmp $b} keys %{$an->data->{server}{$name}{block}{$device_type}})
 			{
-				print "  - Disk type / source / size / bus / guest device: $device_type / ".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{source}." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}})." /  ".$an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}." / $guest_device\n";
+				my $bus    = $an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus};
+				my $size   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}});
+				my $source = $an->data->{server}{$name}{block}{$device_type}{$guest_device}{source};
+				if (length($device_type)  > $length_storage_type)   { $length_storage_type   = length($device_type);  }
+				if (length($bus)          > $length_storage_bus)    { $length_storage_bus    = length($bus);          }
+				if (length($guest_device) > $length_storage_target) { $length_storage_target = length($guest_device); }
+				if (length($size)         > $length_storage_size)   { $length_storage_size   = length($size);         }
+				if (length($source)       > $length_storage_source) { $length_storage_source = length($source);       }
+				#print "server: [$name], type: [$device_type ($length_storage_type)], guest device: [$guest_device ($length_storage_target)], bus: [$bus ($length_storage_bus)], size: [$size ($length_storage_size)], source: [$source ($length_storage_source)]\n";
+				
+				# Store the MAC, the store the hash reference.
+				$an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}         = $size;
+				$an->data->{server}{$name}{block}{$device_type}{$guest_device}{device_type}  = $device_type;
+				$an->data->{server}{$name}{block}{$device_type}{$guest_device}{guest_device} = $guest_device;
+				push @{$an->data->{server}{$name}{disk_array}}, $an->data->{server}{$name}{block}{$device_type}{$guest_device};
 			}
 		}
 		foreach my $mac (sort {$a cmp $b} keys %{$an->data->{server}{$name}{network}})
 		{
-			print "  - Network MAC / Model / Bridge: $mac / ".$an->data->{server}{$name}{network}{$mac}{model}." / ".$an->data->{server}{$name}{network}{$mac}{bridge}."\n";
+			my $model  = $an->data->{server}{$name}{network}{$mac}{model};
+			my $bridge = $an->data->{server}{$name}{network}{$mac}{bridge};
+			if (length($mac)    > $length_network_mac)    { $length_network_mac    = length($mac);    }
+			if (length($model)  > $length_network_model)  { $length_network_model  = length($model);  }
+			if (length($bridge) > $length_network_bridge) { $length_network_bridge = length($bridge); }
+			
+			# Store the MAC, the store the hash reference.
+			$an->data->{server}{$name}{network}{$mac}{mac} = $mac;
+			push @{$an->data->{server}{$name}{nic_array}}, $an->data->{server}{$name}{network}{$mac};
 		}
-		print "\n";
 	}
 	
-	print "-=] Host: 
-
-CPU  - Cores / Threads: ".$an->data->{summary}{cpu}{cores}." / ".$an->data->{summary}{cpu}{threads}." / Model: ".$an->data->{summary}{cpu}{model}." 
-RAM  - Size / Allocated / Available: ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{allocated}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{available}})."
-Swap - Size / Used / Free: ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{used}})." / ".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}})."\n\n";
+	# Now display;
+	my $total_length = 2 + $length_server_name + 3 + $length_ram + 3 + $length_cpu_cores + 3 + $length_cpu_type + 3 + $length_storage_type + 3 + $length_storage_bus + 3 + $length_storage_target + 3 + $length_storage_size + 3 + $length_storage_source + 3 + $length_network_mac + 3 + $length_network_model + 3 + $length_network_bridge + 2;
+	print " "; for (0..($total_length - 3)) { print "_"; } print " \n";
+	
+	print "| ".sprintf("%-${length_server_name}s", "")."   ".sprintf("%-${length_ram}s", "")." | -=] ".sprintf("%-".($length_cpu_cores + $length_cpu_type - 1)."s", $say_cpu)." | -=] ".sprintf("%-".($length_storage_type + $length_storage_bus + $length_storage_target + $length_storage_size + $length_storage_source + 8)."s", $say_storage)." | -=] ".sprintf("%-".($length_network_mac + $length_network_model + $length_network_bridge + 2)."s", $say_network)." |\n";
+	
+	print "| ".sprintf("%-${length_server_name}s", $say_server_name)." | ".sprintf("%-${length_ram}s", $say_ram)." | ".sprintf("%-${length_cpu_cores}s", $say_cores)." | ".sprintf("%-${length_cpu_type}s", $say_type)." | ".sprintf("%-${length_storage_type}s", $say_type)." | ".sprintf("%-${length_storage_bus}s", $say_bus)." | ".sprintf("%-${length_storage_target}s", $say_target)." | ".sprintf("%-${length_storage_size}s", $say_size)." | ".sprintf("%-${length_storage_source}s", $say_source)." | ".sprintf("%-${length_network_mac}s", $say_mac)." | ".sprintf("%-${length_network_model}s", $say_model)." | ".sprintf("%-${length_network_bridge}s", $say_bridge)." |\n";
+	
+	my $break_line = "+-".sprintf("%0${length_server_name}d", 0)."-+-".sprintf("%0${length_ram}d", 0)."-+-".sprintf("%0${length_cpu_cores}d", 0)."-+-".sprintf("%0${length_cpu_type}d", 0)."-+-".sprintf("%0${length_storage_type}d", 0)."-+-".sprintf("%0${length_storage_bus}d", 0)."-+-".sprintf("%0${length_storage_target}d", 0)."-+-".sprintf("%0${length_storage_size}d", 0)."-+-".sprintf("%0${length_storage_source}d", 0)."-+-".sprintf("%0${length_network_mac}d", 0)."-+-".sprintf("%0${length_network_model}d", 0)."-+-".sprintf("%0${length_network_bridge}d", 0)."-+";
+	   $break_line =~ s/0/-/g;
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{server}})
+	{
+		print $break_line."\n";
+		my $ram   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}});
+		my $cores = $an->data->{server}{$name}{cpu}{cores};
+		my $type  = $an->data->{server}{$name}{cpu}{mode};
+		
+		# How many lines?
+		my $disk_lines = @{$an->data->{server}{$name}{disk_array}};
+		my $nic_lines  = @{$an->data->{server}{$name}{nic_array}};
+		my $lines      = $disk_lines > $nic_lines ? $disk_lines : $nic_lines;
+		
+		my $disk_hash = $an->data->{server}{$name}{disk_array}->[0];
+		my $nic_hash  = $an->data->{server}{$name}{nic_array}->[0];
+		
+		print "| ".sprintf("%-${length_server_name}s", $name)." | ".sprintf("%-${length_ram}s", $ram)." | ".sprintf("%-${length_cpu_cores}s", $cores)." | ".sprintf("%-${length_cpu_type}s", $type)." | ".sprintf("%-${length_storage_type}s", $disk_hash->{device_type})." | ".sprintf("%-${length_storage_bus}s", $disk_hash->{bus})." | ".sprintf("%-${length_storage_target}s", $disk_hash->{guest_device})." | ".sprintf("%-${length_storage_size}s", $disk_hash->{size})." | ".sprintf("%-${length_storage_source}s", $disk_hash->{source})." | ".sprintf("%-${length_network_mac}s", $nic_hash->{mac})." | ".sprintf("%-${length_network_model}s", $nic_hash->{model})." | ".sprintf("%-${length_network_bridge}s", $nic_hash->{bridge})." |\n";
+		for (my $i = 1; $i < $lines; $i++)
+		{
+			$disk_hash = defined $an->data->{server}{$name}{disk_array}->[$i] ? $an->data->{server}{$name}{disk_array}->[$i] : {};
+			$nic_hash  = defined $an->data->{server}{$name}{nic_array}->[$i]  ? $an->data->{server}{$name}{nic_array}->[$i]  : {};
+			
+			$disk_hash->{device_type}  = "" if not defined $disk_hash->{device_type};
+			$disk_hash->{bus}          = "" if not defined $disk_hash->{bus};
+			$disk_hash->{guest_device} = "" if not defined $disk_hash->{guest_device};
+			$disk_hash->{size}         = "" if not defined $disk_hash->{size};
+			$disk_hash->{source}       = "" if not defined $disk_hash->{source};
+			$nic_hash->{mac}           = "" if not defined $nic_hash->{mac};
+			$nic_hash->{model}         = "" if not defined $nic_hash->{model};
+			$nic_hash->{bridge}        = "" if not defined $nic_hash->{bridge};
+			print "| ".sprintf("%-${length_server_name}s", "")." | ".sprintf("%-${length_ram}s", "")." | ".sprintf("%-${length_cpu_cores}s", "")." | ".sprintf("%-${length_cpu_type}s", $type)." | ".sprintf("%-${length_storage_type}s", $disk_hash->{device_type})." | ".sprintf("%-${length_storage_bus}s", $disk_hash->{bus})." | ".sprintf("%-${length_storage_target}s", $disk_hash->{guest_device})." | ".sprintf("%-${length_storage_size}s", $disk_hash->{size})." | ".sprintf("%-${length_storage_source}s", $disk_hash->{source})." | ".sprintf("%-${length_network_mac}s", $nic_hash->{mac})." | ".sprintf("%-${length_network_model}s", $nic_hash->{model})." | ".sprintf("%-${length_network_bridge}s", $nic_hash->{bridge})." |\n";
+		}
+	}
+	$break_line =~ s/^\+/ /;
+	$break_line =~ s/\+$/ /;
+	$break_line =~ s/\+/^/g;
+	print $break_line."\n\n";
+	
+	print $an->String->get({key => "message_0008", variables => {
+		cores         => $an->data->{summary}{cpu}{cores}, 
+		threads       => $an->data->{summary}{cpu}{threads}, 
+		model         => $an->data->{summary}{cpu}{model}, 
+		ram_size      => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}}), 
+		ram_allocated => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{allocated}}), 
+		ram_available => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{available}}), 
+		swap_size     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}}), 
+		swap_used     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{used}}), 
+		swap_free     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}}), 
+	}})."\n\n";
 	
 	return(0);
 }
