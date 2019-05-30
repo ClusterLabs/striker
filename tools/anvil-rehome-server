@@ -54,6 +54,7 @@ my $an = AN::Tools->new({data => {
 		switches	=>	{
 			target			=>	"",	# The host-name or IP address of one of the nodes. It must be a cluster member.
 			server			=>	"",	# The name of the server to migrate.
+			'new-name'		=>	"",	# This changes the name when it lands here.
 		},
 		sys		=>	{
 			language		=>	"en_CA",
@@ -129,13 +130,171 @@ sub verify_target_is_ready
 	print $an->String->get({key => "arhs_message_0002"})."\n";
 	
 	# Read in the XML definition file
-	read_definition($an);
+	read_definition_on_target($an);
+	
+	# Check that we're ready to host this server.
+	check_local_system($an);
+	
+	return(0);
+}
 
+# This checks that the local system is ready to take the server.
+sub check_local_system
+{
+	my ($an) = @_;
+	
+	# Read in our local usage data.
+	get_local_resource($an);
+	
+	# Fist, are we renaming the server?
+	$an->data->{new}{server_name}      = $an->data->{switches}{'new-name'} ? $an->data->{switches}{'new-name'} : $an->data->{switches}{server};
+	$an->data->{new}{definition}{file} = $an->data->{path}{shared_definitions}."/".$an->data->{new}{server_name}.".xml";
+	$an->data->{new}{definition}{xml}  = "";
+	
+	# If the new server's XML file exists, read it in. We'll create LVs in it that don't already exist.
+	if (-e $an->data->{new}{definition}{file})
+	{
+		# Read the definition and create any missing LVs.
+		read_definition_locally($an);
+	}
+	else
+	{
+	}
+	
+	# First; what LVs are needed for this server, and do they exist? if not, is there space for them?
+	find_new_lvs($an);
+	
+	return(0);
+}
+
+# This figures out what the new LVs names should be, and checks if they exist. If not, it checks to see if 
+# there is enough space to create them.
+sub find_new_lvs
+{
+	my ($an) = @_;
+	
+	# Loop through each LV from the target's definition and see if there is a match on the loca
+	
+	return(0);
+}
+
+# This uses anvil-report-usage to find out what exists and what resources are free.
+sub get_local_resource
+{
+	my ($an) = @_;
+	
+	my $usage_xml  = "";
+	my $shell_call = $an->data->{path}{'anvil-report-usage'};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		$usage_xml .= $_;
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "usage_xml", value1 => $usage_xml,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($usage_xml, ForceArray => 1);
+	#print Dumper $data;
+	
+	# CPU cores?
+	my $cores   = $data->{cpu}->[0]->{cores}->[0];
+	my $threads = $data->{cpu}->[0]->{threads}->[0];
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cores",   value1 => $cores,
+		name2 => "threads", value2 => $threads,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{'local'}{cpu}{maximum} = $threads > $cores ? $threads : $cores;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "local::cpu::maximum", value1 => $an->data->{'local'}{cpu}{maximum},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# RAM?
+	$an->data->{'local'}{ram}{available} = $data->{ram}->[0]->{available}->[0];
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "local::ram::available", value1 => $an->data->{'local'}{ram}{available}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'local'}{ram}{available}}).")",
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# What VGs do I have?
+	foreach my $hash_ref (@{$data->{ 'volume_groups'}->[0]->{'volume_group'}})
+	{
+		my $name = $hash_ref->{name}->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "name", value1 => $name,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{'local'}{vg}{$name}{size}    = $hash_ref->{size}->[0];
+		$an->data->{'local'}{vg}{$name}{free}    = $hash_ref->{size}->[0];
+		$an->data->{'local'}{vg}{$name}{pe_size} = $hash_ref->{pe_size}->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "local::vg::${name}::size",    value1 => $an->data->{'local'}{vg}{$name}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'local'}{vg}{$name}{size}}).")",
+			name2 => "local::vg::${name}::free",    value2 => $an->data->{'local'}{vg}{$name}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'local'}{vg}{$name}{free}}).")",
+			name3 => "local::vg::${name}::pe_size", value3 => $an->data->{'local'}{vg}{$name}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'local'}{vg}{$name}{pe_size}}).")",
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	foreach my $hash_ref (@{$data->{'logical_volumes'}->[0]->{'logical_volume'}})
+	{
+		my $name = $hash_ref->{name}->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "name", value1 => $name,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{'local'}{lv}{$name}{size}  = $hash_ref->{size}->[0];
+		$an->data->{'local'}{lv}{$name}{on_vg} = $hash_ref->{on_vg}->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "local::lv::${name}::size",  value1 => $an->data->{'local'}{lv}{$name}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'local'}{lv}{$name}{size}}).")",
+			name2 => "local::lv::${name}::on_vg", value2 => $an->data->{'local'}{lv}{$name}{on_vg},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Bridges?
+	foreach my $bridge (sort {$a cmp $b} @{$data->{bridges}->[0]->{bridge}})
+	{
+		$an->data->{'local'}{bridge}{$bridge} = 1;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "local::bridge::${bridge}", value1 => $an->data->{'local'}{bridge}{$bridge},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This reads the XML file on the local machine and parses it.
+sub read_definition_locally
+{
+	my ($an) = @_;
+	
+	my $name = $an->data->{new}{server_name};
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($an->data->{new}{definition}{file}, ForceArray => 1);
+	
+	# Pull out the disks
+	foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
+	{
+		next if $hash_ref->{device} ne "disk";
+		my $source = $hash_ref->{source}->[0]->{dev} ? $hash_ref->{source}->[0]->{dev} : "";
+		$an->data->{new}{lv}{$source} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "new::lv::${source}", value1 => $an->data->{new}{lv}{$source}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Does the source exit? If not, is the VG the same? If so, is there enough space? If so, 
+		# create. Otherwise, error out.
+		
+	}
+	
 	return(0);
 }
 
 # Read in and parse the source XML file.
-sub read_definition
+sub read_definition_on_target
 {
 	my ($an) = @_;
 	
@@ -228,11 +387,11 @@ sub read_definition
 					name4 => "disks", value4 => $disks, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$an->data->{lv}{$name}{source}{path} = $lv;
-				$an->data->{lv}{$name}{source}{vg}   = $vg;
+				$an->data->{source}{lv}{$name}{source}{path} = $lv;
+				$an->data->{source}{lv}{$name}{source}{vg}   = $vg;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "lv::${name}::source::path", value1 => $an->data->{lv}{$name}{source}{path}, 
-					name2 => "lv::${name}::source::vg",   value2 => $an->data->{lv}{$name}{source}{vg}, 
+					name1 => "source::lv::${name}::source::path", value1 => $an->data->{source}{lv}{$name}{source}{path}, 
+					name2 => "source::lv::${name}::source::vg",   value2 => $an->data->{source}{lv}{$name}{source}{vg}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -297,16 +456,16 @@ sub read_definition
 			if ($lv_size)
 			{
 				# Is this an LV we care about?
-				foreach my $name (sort {$a cmp $b} keys %{$an->data->{lv}})
+				foreach my $name (sort {$a cmp $b} keys %{$an->data->{source}{lv}})
 				{
 					# How big is the LV?
-					my $this_lv = $an->data->{lv}{$name}{source}{path};
+					my $this_lv = $an->data->{source}{lv}{$name}{source}{path};
 					if ($lv_path eq $this_lv)
 					{
 						# Found it.
-						$an->data->{lv}{$name}{source}{size} = $lv_size;
+						$an->data->{source}{lv}{$name}{source}{size} = $lv_size;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "lv::${name}::source::size", value1 => $an->data->{lv}{$name}{source}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$name}{source}{size}}).")", 
+							name1 => "source::lv::${name}::source::size", value1 => $an->data->{source}{lv}{$name}{source}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{source}{lv}{$name}{source}{size}}).")", 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -318,16 +477,16 @@ sub read_definition
 	close $file_handle;
 	
 	# For each LV, read the parent VG extent size.
-	foreach my $name (sort {$a cmp $b} keys %{$an->data->{lv}})
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{source}{lv}})
 	{
 		# How big is the LV?
-		my $this_vg = $an->data->{lv}{$name}{source}{vg};
+		my $this_vg = $an->data->{source}{lv}{$name}{source}{vg};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "this_vg", value1 => $this_vg, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Read the physical extent size?
-		if ((not exists $an->data->{vg}{$this_vg}{pe_size}) or (not $an->data->{vg}{$this_vg}{pe_size}))
+		if ((not exists $an->data->{source}{vg}{$this_vg}{pe_size}) or (not $an->data->{source}{vg}{$this_vg}{pe_size}))
 		{
 			# Read in
 			my $extent_size = 0;
@@ -345,16 +504,16 @@ sub read_definition
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /PE Size (\d+) B/)
 				{
-					$an->data->{vg}{$this_vg}{pe_size} = $1;
+					$an->data->{source}{vg}{$this_vg}{pe_size} = $1;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "vg::${this_vg}::pe_size", value1 => $an->data->{vg}{$this_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$this_vg}{pe_size}}).")",
+						name1 => "source::vg::${this_vg}::pe_size", value1 => $an->data->{source}{vg}{$this_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{source}{vg}{$this_vg}{pe_size}}).")",
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
 			}
 			close $file_handle;
 			
-			if (not $an->data->{vg}{$this_vg}{pe_size})
+			if (not $an->data->{source}{vg}{$this_vg}{pe_size})
 			{
 				# Failed to find the VG's PE size.
 				print $an->String->get({key => "arhs_error_0006", variables => { vg => $this_vg }})."\n";
@@ -373,12 +532,12 @@ sub read_definition
 		cpu   => $an->data->{server}{cores},
 		disks => $an->data->{server}{disks},
 	}})."\n";
-	foreach my $name (sort {$a cmp $b} keys %{$an->data->{lv}})
+	foreach my $name (sort {$a cmp $b} keys %{$an->data->{source}{lv}})
 	{
-		my $logical_volume = $an->data->{lv}{$name}{source}{path};
-		my $volume_group   = $an->data->{lv}{$name}{source}{vg};
-		my $lv_size        = $an->data->{lv}{$name}{source}{size};
-		my $pe_size        = $an->data->{vg}{$volume_group}{pe_size};
+		my $logical_volume = $an->data->{source}{lv}{$name}{source}{path};
+		my $volume_group   = $an->data->{source}{lv}{$name}{source}{vg};
+		my $lv_size        = $an->data->{source}{lv}{$name}{source}{size};
+		my $pe_size        = $an->data->{source}{vg}{$volume_group}{pe_size};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "logical_volume", value1 => $logical_volume, 
 			name2 => "volume_group",   value2 => $volume_group, 

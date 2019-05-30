@@ -225,6 +225,24 @@ sub pretty_report
 	$break_line =~ s/\+/^/g;
 	print $break_line."\n\n";
 	
+	my $bridges = "";
+	foreach my $bridge_name (sort {$a cmp $b} keys %{$an->data->{bridge}})
+	{
+		$bridges .= $bridge_name.", ";
+	}
+	$bridges =~ s/, $//;
+	
+	my $volume_groups = "";
+	foreach my $vg (sort {$a cmp $b} keys %{$an->data->{vg}})
+	{
+		$volume_groups .= $an->String->get({key => "message_0009", variables => {
+			name => $vg, 
+			size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$vg}{size}}),
+			free => $an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$vg}{free}}),
+		}})."\n";
+	}
+
+
 	print $an->String->get({key => "message_0008", variables => {
 		cores         => $an->data->{summary}{cpu}{cores}, 
 		threads       => $an->data->{summary}{cpu}{threads}, 
@@ -235,6 +253,8 @@ sub pretty_report
 		swap_size     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}}), 
 		swap_used     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{used}}), 
 		swap_free     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}}), 
+		bridges       => $bridges,
+		volume_groups => 
 	}})."\n\n";
 	
 	return(0);
@@ -263,7 +283,36 @@ sub parsable_report
 		<free>".$an->data->{summary}{swap}{free}."</free>
 		<used>".$an->data->{summary}{swap}{used}."</used>
 	</swap>
+	<bridges>
 ";
+	foreach my $bridge_name (sort {$a cmp $b} keys %{$an->data->{bridge}})
+	{
+		print "\t\t<bridge><![CDATA[$bridge_name]]></bridge>\n";
+	}
+	print "\t</bridges>
+	<volume_groups>\n";
+	foreach my $vg (sort {$a cmp $b} keys %{$an->data->{vg}})
+	{
+		print "\t\t<volume_group>
+			<name><![CDATA[".$vg."]]></name>
+			<size>".$an->data->{vg}{$vg}{size}."</size>
+			<pe_size>".$an->data->{vg}{$vg}{pe_size}."</pe_size>
+			<free>".$an->data->{vg}{$vg}{free}."</free>
+		</volume_group>
+";
+	}
+	print "\t</volume_groups>
+	<logical_volumes>\n";
+	foreach my $lv (sort {$a cmp $b} keys %{$an->data->{lv}})
+	{
+		print "\t\t<logical_volume>
+			<name>$lv</name>
+			<on_vg>".$an->data->{lv}{$lv}{on_vg}."</on_vg>
+			<size>".$an->data->{lv}{$lv}{size}."</size>
+		</logical_volume>\n";
+	}
+	print "\t</logical_volumes>\n";
+	
 	foreach my $name (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
 		print "\t<server>
@@ -319,6 +368,40 @@ sub gather_data
 	collect_ram_data($an);
 	collect_storage_data($an);
 	collect_server_data($an);
+	collect_bridges($an);
+	
+	return(0);
+}
+
+sub collect_bridges
+{
+	my ($an) = @_;
+	
+	my $shell_call = $an->data->{path}{brctl}." show";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		next if $line =~ /^bridge name/i;
+		next if $line =~ /^\s/;
+		if ($line =~ /^(\S.*?)\s/)
+		{
+			my $bridge_name = $1;
+			$an->data->{bridge}{$bridge_name} = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bridge::${bridge_name}", value1 => $an->data->{bridge}{$bridge_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
 	
 	return(0);
 }
@@ -330,7 +413,7 @@ sub collect_server_data
 	
 	$an->data->{summary}{ram}{allocated} = 0;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::shared_definitions", value1 => $an->data->{path}{shared_definitions}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	local(*DIRECTORY);
@@ -345,7 +428,7 @@ sub collect_server_data
 		my $full_file = $an->data->{path}{shared_definitions}."/".$file;
 		next if not -f $full_file;
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "full_file", value1 => $full_file, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -380,7 +463,7 @@ sub collect_server_data
 		$an->data->{server}{$name}{cpu}{mode}  =  $cpu_mode;
 		$an->data->{server}{$name}{ram}        =  $ram;
 		$an->data->{summary}{ram}{allocated}   += $ram;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "server::${name}::cpu::cores", value1 => $an->data->{server}{$name}{cpu}{cores}, 
 			name2 => "server::${name}::cpu::mode",  value2 => $an->data->{server}{$name}{cpu}{mode}, 
 			name3 => "server::${name}::ram",        value3 => $an->data->{server}{$name}{ram}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}}).")", 
@@ -414,7 +497,7 @@ sub collect_server_data
 			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}    = $bus;
 			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{source} = $source;
 			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}   = $size;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "server::${name}::block::${device_type}::${guest_device}::bus",    value1 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}, 
 				name2 => "server::${name}::block::${device_type}::${guest_device}::source", value2 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{source}, 
 				name3 => "server::${name}::block::${device_type}::${guest_device}::size",   value3 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}}).")",  
@@ -435,7 +518,7 @@ sub collect_server_data
 			
 			$an->data->{server}{$name}{network}{$mac}{bridge} = $bridge;
 			$an->data->{server}{$name}{network}{$mac}{model}  = $model;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "server::${name}::network::${mac}::bridge", value1 => $an->data->{server}{$name}{network}{$mac}{bridge}, 
 				name2 => "server::${name}::network::${mac}::model",  value2 => $an->data->{server}{$name}{network}{$mac}{model}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -446,7 +529,7 @@ sub collect_server_data
 	# Calculate the available RAM; We take a simple 4GiB off as our 'free' comes from dmi, not /proc/meminfo
 	$an->data->{summary}{ram}{free}      = $an->data->{summary}{ram}{size} - $an->data->{summary}{ram}{allocated};
 	$an->data->{summary}{ram}{available} = $an->data->{summary}{ram}{free} - (4 * (2 ** 30));
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "summary::ram::free",      value1 => $an->data->{summary}{ram}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{free}}).")", 
 		name2 => "summary::ram::available", value2 => $an->data->{summary}{ram}{available}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{available}}).")", 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -505,7 +588,7 @@ sub collect_storage_data
 			{
 				$an->data->{lv}{$lv_path}{on_vg} = $on_vg;
 				$an->data->{lv}{$lv_path}{size}  = $lv_size;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "lv::${lv_path}::on_vg", value1 => $an->data->{lv}{$lv_path}{on_vg}, 
 					name2 => "lv::${lv_path}::size",  value2 => $an->data->{lv}{$lv_path}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$lv_path}{size}}).")", 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -553,21 +636,21 @@ sub collect_storage_data
 		if ($line =~ /VG Size (\d+) B/)
 		{
 			$an->data->{vg}{$in_vg}{size} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg::${in_vg}::size", value1 => $an->data->{vg}{$in_vg}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{size}}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /PE Size (\d+) B/)
 		{
 			$an->data->{vg}{$in_vg}{pe_size} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg::${in_vg}::pe_size", value1 => $an->data->{vg}{$in_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{pe_size}}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /Free PE \/ Size \d+ \/ (\d+) B/)
 		{
 			$an->data->{vg}{$in_vg}{free} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg::${in_vg}::free", value1 => $an->data->{vg}{$in_vg}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{free}}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -726,7 +809,7 @@ sub collect_ram_data
 	$an->data->{summary}{swap}{size} = $an->data->{summary}{ram}{proc}{swap_total};
 	$an->data->{summary}{swap}{free} = $an->data->{summary}{ram}{proc}{swap_free};
 	$an->data->{summary}{swap}{used} = $an->data->{summary}{ram}{proc}{swap_total} - $an->data->{summary}{ram}{proc}{swap_free};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "summary::ram::size",  value1 => $an->Readable->comma($an->data->{summary}{ram}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}}).")", 
 		name2 => "summary::swap::size", value2 => $an->Readable->comma($an->data->{summary}{swap}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}}).")", 
 		name3 => "summary::swap::free", value3 => $an->Readable->comma($an->data->{summary}{swap}{free})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}}).")", 
@@ -844,7 +927,7 @@ sub collect_cpu_data
 	$an->data->{summary}{cpu}{model}   = $model;
 	$an->data->{summary}{cpu}{cores}   = $total_cores;
 	$an->data->{summary}{cpu}{threads} = $total_threads;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "summary::cpu::model",   value1 => $an->data->{summary}{cpu}{model}, 
 		name2 => "summary::cpu::cores",   value2 => $an->data->{summary}{cpu}{cores}, 
 		name3 => "summary::cpu::threads", value3 => $an->data->{summary}{cpu}{threads}, 

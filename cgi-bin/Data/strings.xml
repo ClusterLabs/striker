@@ -1334,11 +1334,13 @@
 		<key name="message_0008">
 -=] Host: 
 
-CPU  - #!variable!model!# (#!variable!cores!#c/#!variable!cores!#t)
-RAM  - #!variable!ram_size!# total, #!variable!ram_allocated!# allocated, #!variable!ram_available!# available for servers
-Swap - #!variable!swap_size!# total, #!variable!swap_used!# used, #!variable!swap_free!# free
+CPU: ... #!variable!model!# (#!variable!cores!#c/#!variable!cores!#t)
+RAM: ... #!variable!ram_size!# total, #!variable!ram_allocated!# allocated, #!variable!ram_available!# available for servers
+Swap: .. #!variable!swap_size!# total, #!variable!swap_used!# used, #!variable!swap_free!# free
+Bridges: #!variable!bridges!#
+VGs;
 		</key>
-		<key name="message_0009">#!free!#</key>
+		<key name="message_0009">- #!variable!name!#: #!variable!size!#/#!variable!free!# (size/free)</key>
 		<key name="message_0010">#!free!#</key>
 		<key name="message_0011">#!free!#</key>
 		<key name="message_0012">#!free!#</key>
