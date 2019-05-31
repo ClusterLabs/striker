@@ -4138,6 +4138,13 @@ SUPPORT
 - Disks: ... [#!variable!disks!#]
 		]]></key>
 		<key name="arhs_message_0004"><![CDATA[ - Disk: ... [#!variable!lv!#], size: [#!variable!size!#], block size: [#!variable!block!#]]]></key>
+		<key name="arhs_message_0005"><![CDATA[May I create the new logical volume: [#!variable!lv!#]? [Y/n]]]></key>
+		<key name="arhs_message_0006"><![CDATA[- Auto-yes, proceeding.]]></key>
+		<key name="arhs_message_0007"><![CDATA[Aborting. If you create an LV with the same name manually (on any VG), it will be used.]]></key>
+		<key name="arhs_message_0008"><![CDATA[- Created successfully!]]></key>
+		<key name="arhs_message_0009"><![CDATA[- The target LV: [#!variable!lv!#] already exists, no need to create it.]]></key>
+		<key name="arhs_message_0010"><![CDATA[Preparing storage;]]></key>
+		<key name="arhs_message_0011"><![CDATA[Storage is ready!]]></key>
 		
 		<!-- errors -->
 		<key name="arhs_error_0001"><![CDATA[No target node was passed. Please specify with '--target <name_or_ip>'.]]></key>
@@ -4162,7 +4169,16 @@ Output (error of what was read) is below;
 #!variable!output!#
 ====
 		]]></key>
-		<key name="arhs_error_0006"><![CDATA[Failed to fing the physical extent size for the volume group: [#!variable!vg!#].]]></key>
+		<key name="arhs_error_0006"><![CDATA[Failed to find the physical extent size for the volume group: [#!variable!vg!#].]]></key>
+		<key name="arhs_error_0007"><![CDATA[Failed to find a VG suitable to use for the old LV: [#!variable!lv!#].]]></key>
+		<key name="arhs_error_0008"><![CDATA[
+- Failed!
+
+The attempt to create the LV failed. Here is the output;
+====
+#!variable!output!#
+====
+		]]></key>
 		
 		<!-- warnings -->
 		<key name="arhs_warning_0001">Use '--help' for usage information.</key>
