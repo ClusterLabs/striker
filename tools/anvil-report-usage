@@ -305,6 +305,9 @@ sub parsable_report
 	<logical_volumes>\n";
 	foreach my $lv (sort {$a cmp $b} keys %{$an->data->{lv}})
 	{
+		# This can exist if an LV is referenced in a definition file, but not exist yet locally. So 
+		# we skip if there is no size.
+		next if not exists $an->data->{lv}{$lv}{size};
 		print "\t\t<logical_volume>
 			<name>$lv</name>
 			<on_vg>".$an->data->{lv}{$lv}{on_vg}."</on_vg>

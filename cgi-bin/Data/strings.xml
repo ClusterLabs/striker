@@ -4145,6 +4145,8 @@ SUPPORT
 		<key name="arhs_message_0009"><![CDATA[- The target LV: [#!variable!lv!#] already exists, no need to create it.]]></key>
 		<key name="arhs_message_0010"><![CDATA[Preparing storage;]]></key>
 		<key name="arhs_message_0011"><![CDATA[Storage is ready!]]></key>
+		<key name="arhs_message_0012"><![CDATA[[ NOTE ] - The network bridge has changed from: [#!variable!old_bridge!#] to: [#!variable!new_bridge!#].]]></key>
+		<key name="arhs_message_0013"><![CDATA[The new XML definition file has been saved as: [#!variable!file!#].]]></key>
 		
 		<!-- errors -->
 		<key name="arhs_error_0001"><![CDATA[No target node was passed. Please specify with '--target <name_or_ip>'.]]></key>
