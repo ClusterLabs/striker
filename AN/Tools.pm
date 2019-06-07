@@ -1148,6 +1148,7 @@ sub _set_paths
 	$an->data->{path}{cp}                     = "/bin/cp";
 	$an->data->{path}{createrepo}             = "/usr/bin/createrepo";
 	$an->data->{path}{curl}                   = "/usr/bin/curl";
+	$an->data->{path}{dd}                     = "/bin/dd";
 	$an->data->{path}{df}                     = "/bin/df";
 	$an->data->{path}{dmesg}                  = "/bin/dmesage";
 	$an->data->{path}{dmidecode}              = "/usr/sbin/dmidecode";

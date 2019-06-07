@@ -137,28 +137,81 @@ sub run_dd
 	# Loop through the LVs from the remote
 	foreach my $name (sort {$a cmp $b} keys %{$an->data->{source}{lv}})
 	{
-		my $from_lv    = $an->data->{source}{lv}{$name}{path};
-		my $size       = $an->data->{source}{lv}{$name}{size};
+		my $from_lv = $an->data->{source}{lv}{$name}{path};
+		my $from_vg = $an->data->{source}{lv}{$name}{vg};
+		my $size    = $an->data->{source}{lv}{$name}{size};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "name",    value1 => $name, 
+			name2 => "from_lv", value2 => $from_lv, 
+			name3 => "from_vg", value3 => $from_vg, 
+			name4 => "size",    value4 => $size." (".$an->Readable->bytes_to_hr({'bytes' => $size}).")", 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		my $to_lv      = "";
 		my $block_size = "";
 		if ((exists $an->data->{image}{$from_lv}) && ($an->data->{image}{$from_lv}{to}))
 		{
 			$to_lv      = $an->data->{image}{$from_lv}{to};
 			$block_size = $an->data->{image}{$from_lv}{bs};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "to_lv",      value1 => $to_lv, 
+				name2 => "block_size", value2 => $block_size." (".$an->Readable->bytes_to_hr({'bytes' => $block_size}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			# Find it from the definition file.
-# 			foreach my 
+			get_local_resource($an);
+			
+			# The LVs exist already, but might have changed names.
+			my $new_lv_name = $name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_lv_name", value1 => $new_lv_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{new}{server_name})
+			{
+				my $new_name    =  $an->data->{new}{server_name};
+				   $new_name    =~ s/ /_/g;
+				my $old_name    =  $an->data->{switches}{server};
+				   $new_lv_name =~ s/$old_name/$new_name/;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "new_name",    value1 => $new_name, 
+					name2 => "old_name",    value2 => $old_name, 
+					name3 => "new_lv_name", value3 => $new_lv_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# What VG is it on?
+			my $new_vg = "";
+			foreach my $lv (sort {$a cmp $b} keys %{$an->data->{'local'}{lv}})
+			{
+				next if $lv !~ /\/$new_lv_name$/;
+				$new_vg = $an->data->{'local'}{lv}{$lv}{on_vg};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "lv",     value1 => $lv, 
+					name2 => "new_vg", value2 => $new_vg, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+				
+			my $new_lv = "/dev/".$new_vg."/".$new_lv_name; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "new_vg", value1 => $new_vg, 
+				name2 => "new_lv", value2 => $new_lv, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Keep track of whick old LVs will be copied to what new LVs.
+			$to_lv      = $new_lv;
+			$block_size = $an->data->{source}{vg}{$from_vg}{pe_size};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "to_lv",      value1 => $to_lv, 
+				name2 => "block_size", value2 => $block_size." (".$an->Readable->bytes_to_hr({'bytes' => $block_size}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "name",       value1 => $name, 
-			name2 => "from_lv",    value2 => $from_lv, 
-			name3 => "size",       value3 => $size." (".$an->Readable->bytes_to_hr({'bytes' => $size}).")", 
-			name4 => "to_lv",      value4 => $to_lv, 
-			name5 => "block_size", value5 => $block_size." (".$an->Readable->bytes_to_hr({'bytes' => $block_size}).")", 
-		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $shell_call = $an->data->{path}{ssh}." ".$an->data->{switches}{target}." \"".$an->data->{path}{dd}." if=".$from_lv." bs=".$block_size."\" | ".$an->data->{path}{dd}." of=".$to_lv." bs=".$block_size." oflag=dsync";
+		print "dd call: [".$shell_call."]\n";
 	}
+	die;
 	
 	return(0);
 }
@@ -220,19 +273,19 @@ sub write_definition
 	# Walk through the XML we read from the source and modify it.
 	my $new_name = $an->data->{new}{server_name};
 	my $new_xml  = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_name", value1 => $new_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (split/\n/, $an->data->{source}{xml})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => ">> line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /<name>.*?<\/name>/)
 		{
 			$line =~ s/<name>.*?<\/name>/<name>$new_name<\/name>/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "<< line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -250,7 +303,7 @@ sub write_definition
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$line =~ s/<source dev='$old_lv'\/>/<source dev='$new_lv'\/>/;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "<< line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -258,7 +311,7 @@ sub write_definition
 		if ($line =~ /<source bridge='(.*?)'\/>/)
 		{
 			my $old_bridge = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "old_bridge", value1 => $old_bridge, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -272,13 +325,13 @@ sub write_definition
 				{
 					next if $bridge !~ /ifn/i;
 					$new_bridge = $bridge; 
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_bridge", value1 => $new_bridge, 
 					}, file => $THIS_FILE, line => __LINE__});
 					print $an->String->get({key => "arhs_message_0012", variables => { old_bridge => $old_bridge, new_bridge => $new_bridge }})."\n";
 					
 					$line =~ s/<source bridge='.*?'\/>/<source bridge='$new_bridge'\/>/;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -290,7 +343,7 @@ sub write_definition
 	
 	# Write it out.
 	my $shell_call = $an->data->{new}{definition}{file};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
@@ -334,7 +387,7 @@ sub create_lvs
 			{
 				# Found one to use.
 				$new_vg = $vg_name;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_vg", value1 => $new_vg, 
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
@@ -371,7 +424,7 @@ sub create_lvs
 		# Keep track of whick old LVs will be copied to what new LVs.
 		$an->data->{image}{$old_lv}{to} = $new_lv;
 		$an->data->{image}{$old_lv}{bs} = $an->data->{source}{vg}{$old_vg}{pe_size};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "image::${old_lv}::to", value1 => $an->data->{image}{$old_lv}{to}, 
 			name2 => "image::${old_lv}::bs", value2 => $an->data->{image}{$old_lv}{bs}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{image}{$old_lv}{bs}}).")", 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -385,7 +438,7 @@ sub create_lvs
 		}
 		
 		my $shell_call = $an->data->{path}{lvcreate}." -L ".$new_size."B -n ".$new_lv_name." ".$new_vg;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "new_lv",     value1 => $new_lv, 
 			name2 => "shell_call", value2 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -554,7 +607,7 @@ sub read_definition_locally
 		my $target_device = $hash_ref->{target}->[0]->{dev};
 		
 		$an->data->{new}{lv}{$source}{target_device} = $target_device;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "new::lv::${source}::target_device", value1 => $an->data->{new}{lv}{$source}{target_device}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -565,12 +618,14 @@ sub read_definition_locally
 			# It does not. What VG does it want to use?
 			if ($source =~ /\/dev\/(.*?)\/(.*)$/)
 			{
-				# See if this LV exists and, if not, try to create it.
+				# NOTE: We don't ask permission here because the LVs are defined and need to 
+				#       exist. If there's a problem, this will error out and the user will 
+				#       have to either manually create the LVs or update the definition file.
 				my $vg      = $1;
 				my $lv      = $2;
 				my $lv_path = "/dev/".$vg."/".$lv;
 				my $size    = exists $an->data->{source}{lv}{$lv} ? $an->data->{source}{lv}{$lv}{size} : 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "vg",      value1 => $vg, 
 					name2 => "lv",      value2 => $lv, 
 					name3 => "lv_path", value3 => $lv_path, 
@@ -612,7 +667,6 @@ sub read_definition_locally
 			}
 		}
 	}
-	die;
 	
 	return(0);
 }
@@ -717,7 +771,7 @@ sub read_definition_on_target
 				
 				$an->data->{source}{lv}{$this_lv}{path} = $lv_path;
 				$an->data->{source}{lv}{$this_lv}{vg}   = $vg;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "source::lv::${this_lv}::path", value1 => $an->data->{source}{lv}{$this_lv}{path}, 
 					name2 => "source::lv::${this_lv}::vg",   value2 => $an->data->{source}{lv}{$this_lv}{vg}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -733,7 +787,7 @@ sub read_definition_on_target
 				if ($this_lv)
 				{
 					$an->data->{source}{lv}{$this_lv}{target_device} = $target_device;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "source::lv::${this_lv}::target_device", value1 => $an->data->{source}{lv}{$this_lv}{target_device}, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -763,7 +817,7 @@ sub read_definition_on_target
 	$an->data->{server}{cores} = $cores;
 	$an->data->{server}{ram}   = $ram;
 	$an->data->{server}{disks} = $disks;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "server::cores", value1 => $an->data->{server}{cores}, 
 		name2 => "server::ram",   value2 => $an->data->{server}{ram}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{ram}}).")", 
 		name3 => "server::disks", value3 => $an->data->{server}{disks}, 
@@ -814,7 +868,7 @@ sub read_definition_on_target
 					{
 						# Found it.
 						$an->data->{source}{lv}{$name}{size} = $lv_size;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "source::lv::${name}::size", value1 => $an->data->{source}{lv}{$name}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{source}{lv}{$name}{size}}).")", 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
