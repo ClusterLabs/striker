@@ -492,7 +492,7 @@
 		<key name="row_0008">Source</key>
 		<key name="row_0009">MAC</key>
 		<key name="row_0010">Bridge</key>
-		<key name="row_0011">#!free!#</key>
+		<key name="row_0011">Attention</key>
 		<key name="row_0012">#!free!#</key>
 		<key name="row_0013">#!free!#</key>
 		<key name="row_0014">#!free!#</key>
@@ -1227,7 +1227,7 @@
 		<key name="title_0113">Please be patient</key>
 		<key name="title_0114">Program Error</key>
 		<key name="title_0115"><![CDATA[Provisioning the new <span class="fixed_width">#!variable!server!#</span> server...]]></key>
-		<key name="title_0116">#!free!#</key>
+		<key name="title_0116">Please Note</key>
 		<key name="title_0117">#!free!#</key>
 		<key name="title_0118">#!free!#</key>
 		<key name="title_0119">#!free!#</key>
@@ -4147,6 +4147,7 @@ SUPPORT
 		<key name="arhs_message_0011"><![CDATA[Storage is ready!]]></key>
 		<key name="arhs_message_0012"><![CDATA[[ NOTE ] - The network bridge has changed from: [#!variable!old_bridge!#] to: [#!variable!new_bridge!#].]]></key>
 		<key name="arhs_message_0013"><![CDATA[The new XML definition file has been saved as: [#!variable!file!#].]]></key>
+		<key name="arhs_message_0014"><![CDATA[The logical volume: [#!variable!lv!#] (#!variable!size!#) doesn't exist. Trying to create it now.]]></key>
 		
 		<!-- errors -->
 		<key name="arhs_error_0001"><![CDATA[No target node was passed. Please specify with '--target <name_or_ip>'.]]></key>

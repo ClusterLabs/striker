@@ -1504,7 +1504,7 @@ sub scan_servers
 					server	=>	$server,
 					url	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=add_server&name=$server&node_name=$host_node&state=$server_state",
 				}});
-			print $an->Web->template({file => "common.html", template => "error-table", replace => { message => $say_error }});
+			print $an->Web->template({file => "common.html", template => "notice-table", replace => { message => $say_error }});
 			next;
 		}
 		
