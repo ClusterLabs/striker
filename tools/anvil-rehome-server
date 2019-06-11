@@ -208,11 +208,93 @@ sub run_dd
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		my $shell_call = $an->data->{path}{ssh}." ".$an->data->{switches}{target}." \"".$an->data->{path}{dd}." if=".$from_lv." bs=".$block_size."\" | ".$an->data->{path}{dd}." of=".$to_lv." bs=".$block_size." oflag=dsync";
-		print "dd call: [".$shell_call."]\n";
+		my $delay    = 3;
+		my $seconds  = ($an->Math->round({number => ((($size / 1024) / 1024) / 100), places => 0}) + $delay);
+		my $finished = $an->Readable->time({'time' => $seconds});
+		print $an->String->get({key => "arhs_message_0015", variables => {
+			from_lv  => $from_lv, 
+			size     => $an->Readable->bytes_to_hr({'bytes' => $size}), 
+			target   => $an->data->{switches}{target},
+			to_lv    => $to_lv, 
+			delay    => $delay, 
+			finished => $finished,
+			seconds  => $an->Readable->comma($seconds),
+		}})."\n";
+		
+		# Give the user time to cancel.
+		sleep $delay;
+		
+		# Start the anvil-watch-dd background process.
+		my $shell_call = $an->data->{path}{'anvil-watch-dd'}." &";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		system ($shell_call);
+		
+		# We'll use this to track the progress and estimate the time left.
+		my $start_time = time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "start_time",  value1 => $start_time,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Now call the dd.
+		$shell_call = $an->data->{path}{ssh}." ".$an->data->{switches}{target}." \"".$an->data->{path}{dd}." if=".$from_lv." bs=".$block_size."\" | ".$an->data->{path}{dd}." of=".$to_lv." bs=".$block_size." oflag=dsync";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /^(\d+) bytes /)
+			{
+				my $bytes_written   = $1;
+				my $seconds_elapsed = time - $start_time;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "bytes_written",   value1 => $bytes_written,
+					name2 => "seconds_elapsed", value2 => $seconds_elapsed,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We wait until ten seconds have elapsed before we start showing status.
+				next if $seconds_elapsed < 2;
+				
+				# Calculate progress
+				my $mib_per_second = $an->Math->round({number => ((($bytes_written / $seconds_elapsed) / 1024) / 1024), places => 1});
+				my $say_mps        = $an->String->get({key => "suffix_0018", variables => { number => $mib_per_second }})."\n";
+				my $percent        = $an->Math->round({number => (($bytes_written / $size) * 100), places => 2});
+				my $seconds_left   = $an->Math->round({number => (($seconds_elapsed / $bytes_written) * ($size - $bytes_written)), places => 0});
+				my $say_time_left  = $an->Readable->time({'time' => $seconds_left});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "mib_per_second", value1 => $mib_per_second,
+					name2 => "say_mps",        value2 => $say_mps,
+					name3 => "percent",        value3 => $percent,
+					name4 => "seconds_left",   value4 => $seconds_left,
+					name5 => "say_time_left",  value5 => $say_time_left,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				print $an->String->get({key => "arhs_message_0016", variables => {
+					percent   => $percent,
+					remaining => $say_time_left, 
+					seconds   => $an->Readable->comma($seconds_left),
+					speed     => $say_mps, 
+					copied    => $an->Readable->bytes_to_hr({'bytes' => $bytes_written}),
+					size      => $an->Readable->bytes_to_hr({'bytes' => $size}),
+				}})."\n";
+			}
+		}
+		close $file_handle;
 	}
 	die;
-	
+=cut
+751+0 records in
+751+0 records out
+787480576 bytes (787 MB) copied, 5.46186 s, 144 MB/s
+=cut
+
 	return(0);
 }
 

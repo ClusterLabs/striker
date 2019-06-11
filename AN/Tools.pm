@@ -1335,6 +1335,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-safe-start_link'}         = "/etc/rc3.d/S99_anvil-safe-start";
 	$an->data->{path}{'anvil-safe-stop'}               = "/sbin/striker/anvil-safe-stop";
 	$an->data->{path}{'anvil-stop-server'}             = "/sbin/striker/anvil-stop-server";
+	$an->data->{path}{'anvil-watch-dd'}                = "/sbin/striker/anvil-watch-dd";
 	$an->data->{path}{'call_anvil-kick-apc-ups'}       = "/sbin/striker/call_anvil-kick-apc-ups";
 	$an->data->{path}{'call_gather-system-info'}       = "/sbin/striker/call_gather-system-info";
 	$an->data->{path}{'call_striker-push-ssh'}         = "/sbin/striker/call_striker-push-ssh";

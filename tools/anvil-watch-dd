@@ -1,0 +1,173 @@
+#!/usr/bin/perl
+# 
+# This is a simple little tool that waits for a 'dd' process to start, sends 'kill -USR1 <pid>' to it for as 
+# long as it is alive, then exits.
+# 
+# NOTE: It only watches for '/bin/dd', it will ignore 'dd' calls without the path. Programatic calls use the 
+#       full path, so that's what this looks for.
+# 
+
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $an = AN::Tools->new({data => {
+		'anvil-watch-dd' =>	{
+			log_db_transactions	=>	0,
+		},
+		path		=>	{
+			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		switches	=>	{
+		},
+		sys		=>	{
+			dd_pid			=>	"",
+			language		=>	"en_CA",
+			log_language		=>	"en_CA",
+			log_level		=>	2,
+			program_name		=>	$program_name,
+			timeout			=>	60,
+		},
+}});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Readable->base2(1);
+
+# Wait until we have a PID for dd.
+my $abort_time = time + $an->data->{sys}{timeout};
+until ($an->data->{sys}{dd_pid})
+{
+	my ($pid) = find_dd_pid($an);
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "pid", value1 => $pid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($pid)
+	{
+		$an->data->{sys}{dd_pid} = $pid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::dd_pid", value1 => $an->data->{sys}{dd_pid},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		if (time > $abort_time)
+		{
+			$an->Log->entry({log_level => 1, message_key => "script_0004", message_variables => { timeout => $an->data->{sys}{timeout} }, file => $THIS_FILE, line => __LINE__});
+			$an->nice_exit({exit_code => 1});
+		}
+		else
+		{
+			sleep 1;
+		}
+	}
+}
+
+my $watch     = 1;
+my $test_file = "/proc/".$an->data->{sys}{dd_pid}."/cmdline";
+$an->Log->entry({log_level => 1, message_key => "message_0010", message_variables => { file => $test_file }, file => $THIS_FILE, line => __LINE__});
+
+#print $an->String->get({key => "message_0010", variables => { file => $test_file }})."\n";
+while ($watch)
+{
+	my $shell_call = $an->data->{path}{'kill'}." -USR1 ".$an->data->{sys}{dd_pid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should be no output.
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	sleep 5;
+	if (not -e $test_file)
+	{
+		$watch = 0;
+		#print $an->String->get({key => "message_0011"})."\n";
+		$an->Log->entry({log_level => 1, message_key => "message_0011", file => $THIS_FILE, line => __LINE__});
+	}
+}
+
+$an->nice_exit({exit_code => 0});
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+sub find_dd_pid
+{
+	my ($an) = @_;
+	
+	my $pid = 0;
+	
+	my $dd_path    = $an->data->{path}{dd};
+	my $ssh_path   = $an->data->{path}{ssh};
+	my $shell_call = $an->data->{path}{'ps'}." a --no-headers -o pid,cmd";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should be no output.
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s$//;
+		   $line =~ s/\s+/ /;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Skip the dd called on the target.
+		next if $line =~ /$ssh_path/;
+		
+		if ($line =~ /$dd_path/)
+		{
+			($pid, my $command) = ($line =~ /(\d+) (.*)$/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "pid",     value1 => $pid, 
+				name2 => "command", value2 => $command, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+	}
+	close $file_handle;
+	
+	return($pid);
+}
