@@ -4150,6 +4150,7 @@ SUPPORT
 		<key name="arhs_message_0013"><![CDATA[The new XML definition file has been saved as: [#!variable!file!#].]]></key>
 		<key name="arhs_message_0014"><![CDATA[The logical volume: [#!variable!lv!#] (#!variable!size!#) doesn't exist. Trying to create it now.]]></key>
 		<key name="arhs_message_0015"><![CDATA[
+==============================================================================
 The copy of: [#!variable!from_lv!#] (#!variable!size!#) from: [#!variable!target!#] to the local: [#!variable!to_lv!#] 
 logical volume will begin in: [#!variable!delay!#] seconds. 
 
@@ -4157,8 +4158,28 @@ Press <ctrl> + <c> now to abort.
 
 If the copy runs at about 100 MiB/sec (typical for gigabit), the copy should take about: [#!variable!finished!#] (#!variable!seconds!# seconds).
 The progress will be displayed below every few seconds.
+==============================================================================
 		]]></key>
-		<key name="arhs_message_0016"><![CDATA[- Percent complete: [#!variable!percent!#%], ETA: [#!variable!remaining!#] (#!variable!seconds!# seconds), MiB/sec: [#!variable!speed!#], Copied: [#!variable!copied!# / #!variable!size!#].]]></key>
+		<key name="arhs_message_0016"><![CDATA[- Percent complete: [#!variable!percent!#%], Time left: [#!variable!remaining!#], MiB/sec: [#!variable!speed!#], Copied: [#!variable!copied!# / #!variable!size!#].]]></key>
+		<key name="arhs_message_0017"><![CDATA[
+Done!
+
+This appears to be a node, so the next step would be to define the server. To do this, run;
+
+# virsh define #!variables!definition!#
+		]]></key>
+		<key name="arhs_message_0018"><![CDATA[
+Done!
+
+This appears to be a node, so please go to Striker and you should see that the server has been found and is 
+ready to add to your Anvil! system!
+
+NOTE! Remember to remove the server from the target once you are certain the migration was successful!
+		]]></key>
+		<key name="arhs_message_0019"><![CDATA[
+If you wish to calculate md5sums, run the following commands. 
+Open two terminals and you can run the target and local commands in parallel.
+		]]></key>
 		
 		<!-- errors -->
 		<key name="arhs_error_0001"><![CDATA[No target node was passed. Please specify with '--target <name_or_ip>'.]]></key>

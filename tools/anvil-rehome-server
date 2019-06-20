@@ -123,10 +123,29 @@ verify_target_is_ready($an);
 # Now run the dd's.
 run_dd($an);
 
+# Done! Tell the user.
+finish_up($an);
+
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This tells the user that we're done. The specific message depends on if this is a node or not.
+sub finish_up
+{
+	my ($an) = @_;
+	
+	# Am I a node?
+	my $message_key = "arhs_message_0017";
+	if (-e $an->data->{path}{cluster_conf})
+	{
+		$message_key = "arhs_message_0018";
+	}
+	print $an->String->get({key => $message_key, variables => { definition => $an->data->{new}{definition}{file} }})."\n";
+	
+	return(0);
+}
 
 # This parses the old and new definitions and uses the target devices (vdX) and size to map source LVs to 
 # target LVs, crafts the 'dd' calls and then runs them.
@@ -287,13 +306,17 @@ sub run_dd
 			}
 		}
 		close $file_handle;
+		
+		push @{$an->data->{md5_sums}}, $an->data->{path}{ssh}." ".$an->data->{switches}{target}." \"md5sum ".$from_lv."\"";
+		push @{$an->data->{md5_sums}}, "md5sum ".$to_lv;
 	}
-	die;
-=cut
-751+0 records in
-751+0 records out
-787480576 bytes (787 MB) copied, 5.46186 s, 144 MB/s
-=cut
+	
+	# Show the user the commands to calc md5sums.
+	print "\n".$an->String->get({key => "arhs_message_0019"})."\n";
+	foreach my $command (@{$an->data->{md5_sums}})
+	{
+		print "# ".$command."\n";
+	}
 
 	return(0);
 }

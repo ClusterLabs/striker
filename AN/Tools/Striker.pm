@@ -5716,7 +5716,17 @@ sub _display_drbd_details
 				$say_n1_ds  = $an->data->{drbd}{$res}{node}{$node1}{disk_state}       if $an->data->{drbd}{$res}{node}{$node1}{disk_state};
 				if (($an->data->{drbd}{$res}{node}{$node1}{disk_state} eq "Inconsistent") && ($an->data->{drbd}{$res}{node}{$node1}{resync_percent} =~ /^\d/))
 				{
-					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">(".$an->data->{drbd}{$res}{node}{$node1}{resync_percent}."%)</span>";
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+						name1 => "node1", value1 => $node1,
+						name2 => "res",   value2 => $res,
+					}, file => $THIS_FILE, line => __LINE__});
+					my $say_progress = $an->data->{drbd}{$res}{node}{$node1}{resync_percent}."%";
+					if ((exists $an->data->{node}{$node1}{drbd}{resource}{$res}) && ($an->data->{node}{$node1}{drbd}{resource}{$res}{eta_to_sync}))
+					{
+						my $time_to_resync = $an->Readable->time({ 'time' => $an->data->{node}{$node1}{drbd}{resource}{$res}{eta_to_sync} });
+						$say_progress .= ", $time_to_resync";
+					}
+					$say_n1_ds .= " <br /><span class=\"subtle_text\" style=\"font-style: normal;\">(".$say_progress.")</span>";
 				}
 			}
 			else
@@ -5741,7 +5751,17 @@ sub _display_drbd_details
 				$say_n2_ds  = $an->data->{drbd}{$res}{node}{$node2}{disk_state}       if $an->data->{drbd}{$res}{node}{$node2}{disk_state};
 				if (($an->data->{drbd}{$res}{node}{$node2}{disk_state} eq "Inconsistent") && ($an->data->{drbd}{$res}{node}{$node2}{resync_percent} =~ /^\d/))
 				{
-					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">(".$an->data->{drbd}{$res}{node}{$node2}{resync_percent}."%)</span>";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "node2", value1 => $node2,
+						name2 => "res",   value2 => $res,
+					}, file => $THIS_FILE, line => __LINE__});
+					my $say_progress = $an->data->{drbd}{$res}{node}{$node2}{resync_percent}."%";
+					if ((exists $an->data->{node}{$node2}{drbd}{resource}{$res}) && ($an->data->{node}{$node2}{drbd}{resource}{$res}{eta_to_sync}))
+					{
+						my $time_to_resync = $an->Readable->time({ 'time' => $an->data->{node}{$node2}{drbd}{resource}{$res}{eta_to_sync} });
+						$say_progress .= ", $time_to_resync";
+					}
+					$say_n2_ds .= " <br /><span class=\"subtle_text\" style=\"font-style: normal;\">(".$say_progress.")</span>";
 				}
 			}
 			else
