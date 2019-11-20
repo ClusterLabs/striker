@@ -13938,6 +13938,7 @@ sub _provision_server
 	
 	# If the OS Variant is '2O16' (capital O), switch it to '2016' (numeral 0)
 	$an->data->{cgi}{os_variant} =~ s/2O16/2016/;
+	$an->data->{cgi}{os_variant} =~ s/2O19/2019/;
 	
 	# Setup the 'virt-install' call.
 	$provision .= "virt-install --connect qemu:///system \\\\\n";
