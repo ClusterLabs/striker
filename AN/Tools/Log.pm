@@ -207,6 +207,11 @@ sub entry
 	# Return if the log level of the message is less than the current system log level.
 	return(1) if $log_level > $an->Log->level;
 	
+	if ((exists $an->data->{switches}{'log-to'}) && ($an->data->{switches}{'log-to'} =~ /^\//))
+	{
+		$log_to = $an->data->{switches}{'log-to'};
+	}
+	
 	# Get the current data and time.
 	my ($now_date, $now_time) = $an->Get->date_and_time();
 	

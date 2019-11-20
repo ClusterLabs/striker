@@ -13945,11 +13945,12 @@ sub _provision_server
 	$provision .= "  --ram ".$an->data->{new_server}{ram}." \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus ".$an->data->{new_server}{cpu_cores}." \\\\\n";
-	if ($an->data->{cgi}{os_variant} eq "win2016")
+	if (($an->data->{cgi}{os_variant} eq "win2016") or ($an->data->{cgi}{os_variant} eq "win2019"))
 	{
 		# Windows is picky about the CPU of late and throws storage errors on recent CPUs when 'host'
 		# is used.
-		$provision .= "  --cpu Nehalem,+fsgsbase \\\\\n";
+		#$provision .= "  --cpu Nehalem,+fsgsbase \\\\\n";
+		$provision .= "  --cpu host \\\\\n";
 		
 		# Switch the type to win2k8 as win2016 isn't recognized by virt-install yet.
 		$an->data->{cgi}{os_variant} = "win2k8";

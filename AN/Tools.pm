@@ -940,6 +940,7 @@ sub _set_defaults
 		"rhel4#!#Red Hat Enterprise Linux 4",
 		"rhel3#!#Red Hat Enterprise Linux 3",
 		"rhel2.1#!#Red Hat Enterprise Linux 2.1",
+		"win2O19#!#Microsoft Windows Server 2019",# NOTE: the 'O' is a capital letter 'o', not a '0', so that it sorts properly.
 		"win2O16#!#Microsoft Windows Server 2016",# NOTE: the 'O' is a capital letter 'o', not a '0', so that it sorts properly.
 		"win2k8#!#Microsoft Windows Server 2012 (R2)",
 		"win2k8#!#Microsoft Windows Server 2008 (R2)",

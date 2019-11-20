@@ -234,6 +234,7 @@ sub process_health
 		if (($peer_ram_total > $hardware_ram_total) && ($difference > 1073741824))
 		{
 			# Mark us as having a fairly major health issue.
+			print $THIS_FILE." ".__LINE__."; difference\n";
 			my $set = $an->Alert->check_alert_sent({
 				type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
 				alert_sent_by		=>	$THIS_FILE,
@@ -241,6 +242,9 @@ sub process_health
 				alert_name		=>	"less_ram_than_peer",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "set", value1  => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($set)
 			{
 				# Warn the user.
@@ -284,13 +288,39 @@ INSERT INTO
 		elsif (($peer_ram_total == $hardware_ram_total) or ($difference < 134217728))
 		{
 			# If there was a difference before, clear it.
-			my $set = $an->Alert->check_alert_sent({
+			my $clear = 0;
+			my $set   = $an->Alert->check_alert_sent({
 				type			=>	"clear",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
 				alert_sent_by		=>	$THIS_FILE,
 				alert_record_locator	=>	"na",
 				alert_name		=>	"less_ram_than_peer",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "set", value1  => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $set)
+			{
+				# There's a bug where the 
+				$query = "SELECT health_uuid FROM health WHERE health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." AND health_source_name = 'less_ram_than_peer';";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $health_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+				   $health_uuid = "" if not defined $health_uuid;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health_uuid", value1 => $health_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($health_uuid)
+				{
+					# Clear it.
+					$clear = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1  => "clear", value1  => $clear, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
 			if ($set)
 			{
 				# Clear the warning
@@ -307,37 +337,58 @@ INSERT INTO
 					},
 				});
 				
+				$clear = 1;;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1  => "clear", value1  => $clear, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "clear", value1  => $clear, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($clear)
+			{
+				# Get the health_uuid
+				my $query = "SELECT health_uuid FROM health WHERE health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." AND health_source_name = 'less_ram_than_peer';";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $health_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+				   $health_uuid = "" if not defined $health_uuid;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health_uuid", value1 => $health_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				# Mark it as deleted for the history schema.
-				my $query = "
+				if ($health_uuid)
+				{
+					my $query = "
 UPDATE  
     health
 SET 
-    health_source_name   = 'DELETED'
-    health_source_weight = '0'
+    health_source_name   = 'DELETED', 
+    health_source_weight = '0', 
     modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    health_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-AND 
-    health_agent_name    = 'less_ram_than_peer',
-);";
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query, 
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-				
-				# Now actually delete it.
-				$query = "
+    health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
+;";
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+					
+					# Now actually delete it.
+					$query = "
 DELETE FROM 
     health
 WHERE 
-    health_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-AND 
-    health_agent_name = 'less_ram_than_peer',
-);";
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query, 
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+    health_uuid = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
+;";
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				}
 			}
 		}
 	}

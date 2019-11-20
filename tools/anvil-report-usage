@@ -47,7 +47,7 @@ my $an = AN::Tools->new({data => {
 		sys		=>	{
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
-			log_level		=>	2,
+			log_level		=>	1,
 			program_name		=>	$program_name,
 		},
 }});
@@ -62,6 +62,16 @@ $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Log->db_transactions(1) if $an->data->{'anvil-rehome-server'}{log_db_transactions};
 $an->Readable->base2(1);
+
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
 
 gather_data($an);
 
@@ -240,8 +250,11 @@ sub pretty_report
 			size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$vg}{size}}),
 			free => $an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$vg}{free}}),
 		}})."\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "vg",            value1 => $vg,
+			name2 => "volume_groups", value2 => $volume_groups,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
-
 
 	print $an->String->get({key => "message_0008", variables => {
 		cores         => $an->data->{summary}{cpu}{cores}, 
@@ -254,7 +267,7 @@ sub pretty_report
 		swap_used     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{used}}), 
 		swap_free     => $an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}}), 
 		bridges       => $bridges,
-		volume_groups => 
+		volume_groups => $volume_groups, 
 	}})."\n\n";
 	
 	return(0);
@@ -381,7 +394,7 @@ sub collect_bridges
 	my ($an) = @_;
 	
 	my $shell_call = $an->data->{path}{brctl}." show";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -389,7 +402,7 @@ sub collect_bridges
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -399,7 +412,7 @@ sub collect_bridges
 		{
 			my $bridge_name = $1;
 			$an->data->{bridge}{$bridge_name} = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "bridge::${bridge_name}", value1 => $an->data->{bridge}{$bridge_name}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -416,14 +429,14 @@ sub collect_server_data
 	
 	$an->data->{summary}{ram}{allocated} = 0;
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::shared_definitions", value1 => $an->data->{path}{shared_definitions}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	local(*DIRECTORY);
 	opendir(DIRECTORY, $an->data->{path}{shared_definitions});
 	while(my $file = readdir(DIRECTORY))
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "file", value1 => $file, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -431,7 +444,7 @@ sub collect_server_data
 		my $full_file = $an->data->{path}{shared_definitions}."/".$file;
 		next if not -f $full_file;
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "full_file", value1 => $full_file, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -449,7 +462,7 @@ sub collect_server_data
 		my $cores                 = $data->{vcpu}->[0]->{content};
 		my $cpu_mode              = $data->{cpu}->[0]->{mode} ? $data->{cpu}->[0]->{mode} : $an->String->get({key => "state_0041"});;
 		my $name                  = $data->{name}->[0];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 			name1  => "current_memory_number", value1  => $an->Readable->comma($current_memory_number), 
 			name2  => "current_memory_units",  value2  => $current_memory_units, 
 			name3  => "current_memory_bytes",  value3  => $current_memory_bytes." (".$an->Readable->bytes_to_hr({'bytes' => $current_memory_bytes}).")", 
@@ -466,7 +479,7 @@ sub collect_server_data
 		$an->data->{server}{$name}{cpu}{mode}  =  $cpu_mode;
 		$an->data->{server}{$name}{ram}        =  $ram;
 		$an->data->{summary}{ram}{allocated}   += $ram;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "server::${name}::cpu::cores", value1 => $an->data->{server}{$name}{cpu}{cores}, 
 			name2 => "server::${name}::cpu::mode",  value2 => $an->data->{server}{$name}{cpu}{mode}, 
 			name3 => "server::${name}::ram",        value3 => $an->data->{server}{$name}{ram}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{ram}}).")", 
@@ -489,7 +502,7 @@ sub collect_server_data
 			{
 				$size = $an->data->{lv}{$source}{size};
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 				name1 => "device_type",  value1 => $device_type, 
 				name2 => "source",       value2 => $source, 
 				name3 => "guest_device", value3 => $guest_device, 
@@ -500,7 +513,7 @@ sub collect_server_data
 			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}    = $bus;
 			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{source} = $source;
 			$an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}   = $size;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server::${name}::block::${device_type}::${guest_device}::bus",    value1 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{bus}, 
 				name2 => "server::${name}::block::${device_type}::${guest_device}::source", value2 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{source}, 
 				name3 => "server::${name}::block::${device_type}::${guest_device}::size",   value3 => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$name}{block}{$device_type}{$guest_device}{size}}).")",  
@@ -513,7 +526,7 @@ sub collect_server_data
 			my $bridge = $hash_ref->{source}->[0]->{bridge};
 			my $model  = $hash_ref->{model}->[0]->{type};
 			my $mac    = $hash_ref->{mac}->[0]->{address};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "bridge", value1 => $bridge, 
 				name2 => "model",  value2 => $model, 
 				name3 => "mac",    value3 => $mac,  
@@ -521,7 +534,7 @@ sub collect_server_data
 			
 			$an->data->{server}{$name}{network}{$mac}{bridge} = $bridge;
 			$an->data->{server}{$name}{network}{$mac}{model}  = $model;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "server::${name}::network::${mac}::bridge", value1 => $an->data->{server}{$name}{network}{$mac}{bridge}, 
 				name2 => "server::${name}::network::${mac}::model",  value2 => $an->data->{server}{$name}{network}{$mac}{model}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -532,7 +545,7 @@ sub collect_server_data
 	# Calculate the available RAM; We take a simple 4GiB off as our 'free' comes from dmi, not /proc/meminfo
 	$an->data->{summary}{ram}{free}      = $an->data->{summary}{ram}{size} - $an->data->{summary}{ram}{allocated};
 	$an->data->{summary}{ram}{available} = $an->data->{summary}{ram}{free} - (4 * (2 ** 30));
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "summary::ram::free",      value1 => $an->data->{summary}{ram}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{free}}).")", 
 		name2 => "summary::ram::available", value2 => $an->data->{summary}{ram}{available}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{available}}).")", 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -550,7 +563,7 @@ sub collect_storage_data
 	my $lv_size    = 0;
 	my $on_vg      = "";
 	my $shell_call = $an->data->{path}{lvdisplay}." --units b";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -558,14 +571,14 @@ sub collect_storage_data
 	{
 		chomp;
 		my $line = $an->String->clean_spaces({string => $_});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /LV Path (\/dev\/.*)$/)
 		{
 			$lv_path = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "lv_path", value1 => $lv_path, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -574,14 +587,14 @@ sub collect_storage_data
 		if ($line =~ /VG Name (.*)$/)
 		{
 			$on_vg = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "on_vg", value1 => $on_vg, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /LV Size (\d+) B/)
 		{
 			$lv_size = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "lv_size", value1 => $lv_size." (".$an->Readable->bytes_to_hr({'bytes' => $lv_size}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -591,7 +604,7 @@ sub collect_storage_data
 			{
 				$an->data->{lv}{$lv_path}{on_vg} = $on_vg;
 				$an->data->{lv}{$lv_path}{size}  = $lv_size;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "lv::${lv_path}::on_vg", value1 => $an->data->{lv}{$lv_path}{on_vg}, 
 					name2 => "lv::${lv_path}::size",  value2 => $an->data->{lv}{$lv_path}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{lv}{$lv_path}{size}}).")", 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -606,7 +619,7 @@ sub collect_storage_data
 	# Get VG info
 	my $in_vg      = "";
 	   $shell_call = $an->data->{path}{vgdisplay}." --units b";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -614,14 +627,14 @@ sub collect_storage_data
 	{
 		chomp;
 		my $line = $an->String->clean_spaces({string => $_});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /VG Name (.*+)$/)
 		{
 			$in_vg = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_vg", value1 => $in_vg, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -630,7 +643,7 @@ sub collect_storage_data
 		if (not $line)
 		{
 			$in_vg = "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_vg", value1 => $in_vg, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -639,21 +652,21 @@ sub collect_storage_data
 		if ($line =~ /VG Size (\d+) B/)
 		{
 			$an->data->{vg}{$in_vg}{size} = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg::${in_vg}::size", value1 => $an->data->{vg}{$in_vg}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{size}}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /PE Size (\d+) B/)
 		{
 			$an->data->{vg}{$in_vg}{pe_size} = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg::${in_vg}::pe_size", value1 => $an->data->{vg}{$in_vg}{pe_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{pe_size}}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /Free PE \/ Size \d+ \/ (\d+) B/)
 		{
 			$an->data->{vg}{$in_vg}{free} = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg::${in_vg}::free", value1 => $an->data->{vg}{$in_vg}{free}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{vg}{$in_vg}{free}}).")", 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -675,7 +688,7 @@ sub collect_ram_data
 	my $part_number   = "";
 	my $serial_number = "";
 	my $shell_call = $an->data->{path}{dmidecode}." --type memory";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -686,21 +699,21 @@ sub collect_ram_data
 		   $line =~ s/^\s+//;
 		   $line =~ s/\s+$//;
 		   $line =~ s/\s+:\s+/: /;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	
 		if ($line =~ /^Locator: (.*?)$/)
 		{
 			$locator = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "locator", value1 => $locator, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /^Size: (.*?)$/)
 		{
 			$size = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "size", value1 => $size, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -709,7 +722,7 @@ sub collect_ram_data
 			{
 				$locator = "";
 				$size    = "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "locator", value1 => $locator, 
 					name2 => "size",    value2 => $size, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -722,7 +735,7 @@ sub collect_ram_data
 				size  => $size,
 			});
 			$total_size += $size;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "size",       value1 => $size, 
 				name2 => "total_size", value2 => $total_size, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -733,14 +746,14 @@ sub collect_ram_data
 			if ($size)
 			{
 				$an->data->{ram}{dmi}{locator}{$locator}{size} = $size;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "ram::dmi::locator::${locator}::size", value1 => $an->Readable->comma($an->data->{ram}{dmi}{locator}{$locator}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{ram}{dmi}{locator}{$locator}{size}}).")", 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			$size    = "";
 			$locator = "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 				name1 => "size",    value1 => $size, 
 				name2 => "locator", value2 => $locator, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -751,7 +764,7 @@ sub collect_ram_data
 	if (-r '/proc/meminfo')
 	{
 		my $shell_call = "/proc/meminfo";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
@@ -762,7 +775,7 @@ sub collect_ram_data
 			   $line =~ s/^\s+//;
 			   $line =~ s/\s+$//;
 			   $line =~ s/\s+:\s+/: /;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -770,7 +783,7 @@ sub collect_ram_data
 			{
 				my $variable = $1;
 				my $size     = $2;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "size",     value2 => $size, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -780,14 +793,14 @@ sub collect_ram_data
 				if ($variable eq "SwapTotal")
 				{
 					$say_variable = "swap_total";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "say_variable", value1 => $say_variable, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($variable eq "SwapFree")
 				{
 					$say_variable = "swap_free";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "say_variable", value1 => $say_variable, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -800,7 +813,7 @@ sub collect_ram_data
 				});
 				
 				$an->data->{summary}{ram}{proc}{$say_variable} = $size;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "summary::ram::proc::${say_variable}", value1 => $an->Readable->comma($an->data->{summary}{ram}{proc}{$say_variable})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{proc}{$say_variable}}).")", 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -812,7 +825,7 @@ sub collect_ram_data
 	$an->data->{summary}{swap}{size} = $an->data->{summary}{ram}{proc}{swap_total};
 	$an->data->{summary}{swap}{free} = $an->data->{summary}{ram}{proc}{swap_free};
 	$an->data->{summary}{swap}{used} = $an->data->{summary}{ram}{proc}{swap_total} - $an->data->{summary}{ram}{proc}{swap_free};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "summary::ram::size",  value1 => $an->Readable->comma($an->data->{summary}{ram}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}}).")", 
 		name2 => "summary::swap::size", value2 => $an->Readable->comma($an->data->{summary}{swap}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{size}}).")", 
 		name3 => "summary::swap::free", value3 => $an->Readable->comma($an->data->{summary}{swap}{free})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{swap}{free}}).")", 
@@ -833,7 +846,7 @@ sub collect_cpu_data
 	my $in_cpu        = "";
 	
 	my $shell_call = $an->data->{path}{dmidecode}." --type processor";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -841,14 +854,14 @@ sub collect_cpu_data
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /Socket Designation: (.*+)$/)
 		{
 			$in_cpu = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_cpu", value1 => $in_cpu, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -858,7 +871,7 @@ sub collect_cpu_data
 			$in_cpu  = "";
 			$cores   = 0;
 			$threads = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "in_cpu",  value1 => $in_cpu, 
 				name2 => "cores",   value2 => $cores, 
 				name3 => "threads", value3 => $threads, 
@@ -870,7 +883,7 @@ sub collect_cpu_data
 		{
 			$cores       =  $1;
 			$total_cores += $cores; 
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "cores",       value1 => $cores, 
 				name2 => "total_cores", value2 => $total_cores, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -879,7 +892,7 @@ sub collect_cpu_data
 		{
 			$threads       =  $1;
 			$total_threads += $threads; 
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "threads",       value1 => $threads, 
 				name2 => "total_threads", value2 => $total_threads, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -892,7 +905,7 @@ sub collect_cpu_data
 	if (-r '/proc/cpuinfo')
 	{
 		my $shell_call = "/proc/cpuinfo";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
@@ -903,20 +916,20 @@ sub collect_cpu_data
 			   $line =~ s/^\s+//;
 			   $line =~ s/\s+$//;
 			   $line =~ s/\s+:\s+/: /;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($line =~ /^model name: (.*?)$/)
 			{
 				my $this_model = $1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_model", value1 => $this_model, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $model)
 				{
 					$model = $this_model;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "model", value1 => $model, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -930,11 +943,27 @@ sub collect_cpu_data
 	$an->data->{summary}{cpu}{model}   = $model;
 	$an->data->{summary}{cpu}{cores}   = $total_cores;
 	$an->data->{summary}{cpu}{threads} = $total_threads;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "summary::cpu::model",   value1 => $an->data->{summary}{cpu}{model}, 
 		name2 => "summary::cpu::cores",   value2 => $an->data->{summary}{cpu}{cores}, 
 		name3 => "summary::cpu::threads", value3 => $an->data->{summary}{cpu}{threads}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $help = $an->String->get({key => "message_0012"})."\n";
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $help;
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+
 	return(0);
 }

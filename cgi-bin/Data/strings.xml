@@ -1340,11 +1340,37 @@ RAM: ... #!variable!ram_size!# total, #!variable!ram_allocated!# allocated, #!va
 Swap: .. #!variable!swap_size!# total, #!variable!swap_used!# used, #!variable!swap_free!# free
 Bridges: #!variable!bridges!#
 VGs;
+#!variable!volume_groups!#
 		</key>
 		<key name="message_0009">- #!variable!name!#: #!variable!size!#/#!variable!free!# (size/free)</key>
 		<key name="message_0010">Watching the 'dd' process via: [#!variable!file!#].</key>
 		<key name="message_0011">The 'dd' process is complete, exiting</key>
-		<key name="message_0012">#!free!#</key>
+		<key name="message_0012"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This shows the usage of resources by servers, and resources remaining free. It 
+outputs in XML format or, with '--pretty', in a human-readable format.
+
+
+SWITCHES
+
+ --pretty
+
+	Print the output in a human-readable format.
+
+ -h, -?, --help
+
+	Show this dialogue and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]></key>
 		<key name="message_0013">#!free!#</key>
 		<key name="message_0014">#!free!#</key>
 		<key name="message_0015">#!free!#</key>
@@ -2202,7 +2228,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="log_0273">Shell call: [#!variable!shell_call!#].</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.com" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2018]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.com" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2020]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 		
