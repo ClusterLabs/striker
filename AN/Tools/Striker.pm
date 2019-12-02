@@ -10754,7 +10754,8 @@ sub _parse_cluster_conf
 							}
 						}
 						
-						my $command  = "$agent -a $address ";
+						my $command  = "$agent ";
+						   $command .= "-a $address "         if $address; # fence_delay does not require an address.
 						   $command .= "-l $login "           if $login;
 						   $command .= "-P "                  if $lanplus;
 						   $command .= "-p \"$password\" "    if $password; # quote the password in case it has spaces in it.
