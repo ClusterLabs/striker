@@ -6816,32 +6816,35 @@ sub target_power
 				name1 => "power_check", value1 => $power_check,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$ipmi_target = ($power_check =~ /-a\s(.*?)\s/)[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "ipmi_target", value1 => $ipmi_target,
-			}, file => $THIS_FILE, line => __LINE__});
-			if (not $an->Validate->is_ipv4({ip => $ipmi_target}))
-			{
+			# Only do the IP address conversion if address is set.
+			if ($power_check =~ /-a\s/) {
+				$ipmi_target = ($power_check =~ /-a\s(.*?)\s/)[0];
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "ipmi_target", value1 => $ipmi_target,
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				print "$THIS_FILE ".__LINE__."; ipmi_target: [$ipmi_target]\n";
-				my $ip = $an->Get->ip({host => $ipmi_target});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "ip", value1 => $ip,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				if ($ip)
+				if (not $an->Validate->is_ipv4({ip => $ipmi_target}))
 				{
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-						name1 => ">> power_check", value1 => $power_check,
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "ipmi_target", value1 => $ipmi_target,
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$power_check =~ s/$ipmi_target/$ip/;
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-						name1 => "<< power_check", value1 => $power_check,
+					print "$THIS_FILE ".__LINE__."; ipmi_target: [$ipmi_target]\n";
+					my $ip = $an->Get->ip({host => $ipmi_target});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "ip", value1 => $ip,
 					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($ip)
+					{
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+							name1 => ">> power_check", value1 => $power_check,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						$power_check =~ s/$ipmi_target/$ip/;
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+							name1 => "<< power_check", value1 => $power_check,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
 				}
 			}
 			
