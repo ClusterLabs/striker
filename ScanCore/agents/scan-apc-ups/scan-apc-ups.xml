@@ -338,7 +338,7 @@ Warning: The UPS watchdog feature is enabled! If the UPS was counting down
 		<!-- These are fake levels used in our own logic -->
 		<key name="scan_apc_ups_health_0030">The UPS is running on its batteries. The input voltage has risen too high, so the UPS has switched to batteries to trim the output voltage.</key>
 		<key name="scan_apc_ups_health_0031">The UPS is running on its batteries. The input voltage has dropped too low, so the UPS has switched to batteries to boost the output voltage.</key>
-		<key name="scan_apc_ups_health_0030">The UPS is running on its batteries. The input voltage is nominal, though, so this is most likely just a self test and not a cause for concern.</key>
+		<key name="scan_apc_ups_health_0032">The UPS is running on its batteries. The input voltage is nominal, though, so this is most likely just a self test and not a cause for concern.</key>
 		<!-- This is used to catch invalid returned values. -->
 		<key name="scan_apc_ups_health_0099">The UPS Reported a health value that isn't recognized. It should have reported an integer between 1~20, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
