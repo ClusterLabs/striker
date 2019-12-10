@@ -1256,16 +1256,6 @@ sub collect_led_states
 			}
 		}
 		close $file_handle;
-		
-		# Record.
-		$an->data->{summary}{led}{id_led}    = $id_led;
-		$an->data->{summary}{led}{css_led}   = $css_led;
-		$an->data->{summary}{led}{error_led} = $error_led;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "summary::led::id_led",    value1 => $an->data->{summary}{led}{id_led}, 
-			name2 => "summary::led::css_led",   value2 => $an->data->{summary}{led}{css_led}, 
-			name3 => "summary::led::error_led", value3 => $an->data->{summary}{led}{error_led}, 
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($manufacturer eq "fujitsu")
 	{
@@ -1287,6 +1277,16 @@ sub collect_led_states
 		}
 		close $file_handle;
 	}
+	
+	# Record.
+	$an->data->{summary}{led}{id_led}    = $id_led;
+	$an->data->{summary}{led}{css_led}   = $css_led;
+	$an->data->{summary}{led}{error_led} = $error_led;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "summary::led::id_led",    value1 => $an->data->{summary}{led}{id_led},
+		name2 => "summary::led::css_led",   value2 => $an->data->{summary}{led}{css_led},
+		name3 => "summary::led::error_led", value3 => $an->data->{summary}{led}{error_led},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
