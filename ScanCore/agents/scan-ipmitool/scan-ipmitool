@@ -841,17 +841,8 @@ sub find_changes
 					#       never been an indication of a real problem before.
 					if ($new_ipmitool_sensor_status eq "na")
 					{
-						# This is usually harmless, so we simple set a notice level 
-						# alert and nothing else.
+						# This is usually harmless, so we simple log this and move on
 						$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0006", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
-						$an->ScanCore->insert_or_update_variables({
-							variable_uuid         => $variable_uuid, 
-							variable_name         => $variable_name,
-							variable_value        => 1,
-							variable_source_uuid  => $an->data->{sys}{host_uuid}, 
-							variable_source_table => "ipmitool", 
-							update_value_only     => 1,
-						});
 						
 						# We loop out now because the rest of the values will look 
 						# really bad (ie: temps down to 0c) and we don't want to 
@@ -861,7 +852,7 @@ sub find_changes
 					}
 					elsif (($new_ipmitool_sensor_status ne "na") && ($old_ipmitool_sensor_status eq "na"))
 					{
-						# It disappeared in a previous sweep, not it's back. We 
+						# It disappeared in a previous sweep, now it's back. We 
 						# continue normal processing to handle those rare occassions
 						# where a sensor was lost back when we cared, and returned 
 						# after updating to this version when we stopped caring.
