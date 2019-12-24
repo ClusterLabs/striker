@@ -198,7 +198,7 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_warning_0020">This machine has risen above the maximum temperature thresholds. Shutdown will soon begin!</key>
 		<key name="scancore_warning_0021">Shutdown output: [#!variable!line!#]</key>
 		<key name="scancore_warning_0022">Mains power has been lost. Remaining *estimated* hold-up time is: [#!variable!highest_holdup_time!# seconds]. Shutdown will occur when the hold-up time drops below: [#!variable!minimum_ups_runtime!# seconds].</key>
-		<key name="scancore_warning_0023">Failed to read the amount of RAM is being used by: [#!variable!program_name!#]. To be safe, the program will exit at the end of this sweep.</key>
+		<key name="scancore_warning_0023">Failed to read the amount of RAM being used by: [#!variable!program_name!#]. To be safe, the program will exit at the end of this sweep.</key>
 		<key name="scancore_warning_0024">Exiting because of errors. The reason(s) will be logged above.</key>
 		<key name="scancore_warning_0025">The 'scancore::dashboard::dlm_hung_timeout' variable is set to: [#!variable!value!#] but it appears to contain a non-digit character. Please set this to be a whole number representing the number of seconds #!string!scancore_brand_0001!# on a #!string!brand_0002!# dashboard should wait for 'clustat' to return before giving up and fencing the node.</key>
 		<key name="scancore_warning_0026">

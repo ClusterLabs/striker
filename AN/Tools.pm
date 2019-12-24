@@ -626,10 +626,10 @@ sub _set_defaults
 	# ScanCore things set here are meant to be overwritable by the user in striker.conf.
 	$an->data->{scancore}{archive}{save_to_disk}           = 0;
 	$an->data->{scancore}{archive}{directory}              = "/var/ScanCore/archives/";
-	$an->data->{scancore}{archive}{trigger}                = 100000;
-	$an->data->{scancore}{archive}{count}                  = 50000;
+	$an->data->{scancore}{archive}{trigger}                = 10000;
+	$an->data->{scancore}{archive}{count}                  = 5000;
 	$an->data->{scancore}{dashboard}{dlm_hung_timeout}     = 300;
-	$an->data->{scancore}{archive}{division}               = 60000;
+	$an->data->{scancore}{archive}{division}               = 50000;
 	$an->data->{scancore}{disable}{boot_nodes}             = 0;
 	$an->data->{scancore}{disable}{load_shedding}          = 0;
 	$an->data->{scancore}{disable}{power_shutdown}         = 0;
