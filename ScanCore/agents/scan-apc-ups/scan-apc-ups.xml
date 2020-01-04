@@ -358,7 +358,7 @@ Warning: The UPS watchdog feature is enabled! If the UPS was counting down
 		<key name="scan_apc_ups_last_xfer_0009">The UPS last transferred to batteries as part of a planned self-test.</key>
 		<key name="scan_apc_ups_last_xfer_0010">The UPS last transferred to batteries because of a significant change of input voltage from the mains circuit.</key>
 		<!-- This is used to catch invalid returned values. -->
-		<key name="scan_apc_ups_last_xfer_0099">The UPS Reported a last transfer value that isn't recognized. It should have reported an integer between 1~10, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
+		<key name="scan_apc_ups_last_xfer_0099">The UPS Reported a last transfer value that isn't recognized.</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
 		<!-- The UPS reports the battery state as an integer. These are
 		     used to translate those states into strings that a human

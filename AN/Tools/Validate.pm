@@ -62,7 +62,7 @@ sub is_cron_schedule
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_cron_schedule" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $is_valid = 1;
 	my $schedule = $parameter->{schedule} ? $parameter->{schedule} : "";
