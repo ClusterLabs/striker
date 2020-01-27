@@ -1782,55 +1782,6 @@ sub get_sql_schema
 ";
 	}
 	
-	# Show what we read
-=pod
-	foreach my $this_table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}})
-	{
-		foreach my $this_schema (sort {$b cmp $a} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}})
-		{
-			print "Table: [$this_schema.$this_table]\n";
-			print "========\n";
-			print $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body};
-			print "========\n";
-			foreach my $this_column (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}})
-			{
-				print "Column: [$this_column] default:\n";
-				print $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}{$this_column}{default_value};
-			}
-			foreach my $this_constraint (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}})
-			{
-				print "Constraint: [$this_constraint]\n";
-				print $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}{$this_constraint};
-			}
-			print "========\n\n";
-		}
-	}
-	foreach my $this_function (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{function}})
-	{
-		print "Function: [$this_function]\n";
-		print "========\n";
-		print $an->data->{scancore}{sql}{schema}{function}{$this_function};
-		print "========\n\n";
-	}
-	foreach my $this_trigger (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{trigger}})
-	{
-		print "Trigger: [$this_trigger]\n";
-		print "========\n";
-		print $an->data->{scancore}{sql}{schema}{trigger}{$this_trigger};
-		print "========\n\n";
-	}
-	foreach my $this_sequence (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{sequence}})
-	{
-		print "Sequence: [$this_sequence]\n";
-		print "========\n";
-		print $an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$this_sequence};
-		print "========\n\n";
-	}
-	
-	print "dump_ok: [$dump_ok]\n";
-	die;
-=cut
-	
 	return($dump_ok);
 }
 

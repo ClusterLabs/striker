@@ -13947,7 +13947,9 @@ sub _provision_server
 	$provision .= "  --ram ".$an->data->{new_server}{ram}." \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus ".$an->data->{new_server}{cpu_cores}." \\\\\n";
-	if (($an->data->{cgi}{os_variant} eq "win2016") or ($an->data->{cgi}{os_variant} eq "win2019"))
+	if (($an->data->{cgi}{os_variant} eq "win2016") or 
+	    ($an->data->{cgi}{os_variant} eq "win2019") or
+		($an->data->{cgi}{os_variant} eq "win7"))
 	{
 		# Windows is picky about the CPU of late and throws storage errors on recent CPUs when 'host'
 		# is used.
@@ -13957,12 +13959,12 @@ sub _provision_server
 		# Switch the type to win2k8 as win2016 isn't recognized by virt-install yet.
 		$an->data->{cgi}{os_variant} = "win2k8";
 	}
-	elsif ($an->data->{cgi}{os_variant} eq "win7")
-	{
-		# Windows is picky about the CPU of late and throws storage errors on recent CPUs when 'host'
-		# is used.
-		$provision .= "  --cpu Nehalem,+fsgsbase \\\\\n";
-	}
+# 	elsif ($an->data->{cgi}{os_variant} eq "win7")
+# 	{
+# 		# Windows is picky about the CPU of late and throws storage errors on recent CPUs when 'host'
+# 		# is used.
+# 		$provision .= "  --cpu Nehalem,+fsgsbase \\\\\n";
+# 	}
 	elsif ($an->data->{cgi}{os_variant} eq "solaris11")
 	{
 		# Solaris 11.3 panics hard with --cpu host', so we'll switch to '--cpu core2duo'. There is no

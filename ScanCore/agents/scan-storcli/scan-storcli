@@ -8825,7 +8825,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_physical_drives WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_physical_drives", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_physical_drives/ history.storcli_physical_drives/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else
@@ -9167,7 +9196,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_drive_groups WHERE storcli_drive_group_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_drive_groups", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_drive_groups/ history.storcli_drive_groups/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else
@@ -9527,7 +9585,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_virtual_drives WHERE storcli_virtual_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_virtual_drives", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_virtual_drives/ history.storcli_virtual_drives/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else
@@ -9821,7 +9908,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_bbus WHERE storcli_bbu_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_bbus", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_bbus/ history.storcli_bbus/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else
@@ -10097,7 +10213,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_cachevaults WHERE storcli_cachevault_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_cachevaults", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_cachevaults/ history.storcli_cachevaults/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else
@@ -10351,7 +10496,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_variables WHERE storcli_variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_variables", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_variables/ history.storcli_variables/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else
@@ -10591,7 +10765,36 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						### NOTE: On some occasions, for as-yet unknown reasons, a 
+						###       record can end up in the public schema while 
+						###       nothing exists in the history schema (which is what
+						###       we read during a resync). To deal with this, we'll 
+						###       do an explicit check before confirming the INSERT).
+						my $count_query = "SELECT COUNT(*) FROM public.storcli_controllers WHERE storcli_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count_query", value1 => $count_query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "count", value1 => $count, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($count)
+						{
+							# Already in, redirect to the history schema.
+							$an->Log->entry({log_level => 1, message_key => "scancore_warning_0003", message_variables => {
+								table  => "storcli_controllers", 
+								id     => $id, 
+								query  => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$query =~ s/ public.storcli_controllers/ history.storcli_controllers/gs;
+							push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+						}
+						else
+						{
+							# No problem, record the query in the array
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
 					}
 				}
 				else

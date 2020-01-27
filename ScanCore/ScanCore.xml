@@ -176,7 +176,7 @@ This node is healthier that the peer. Initiating proactive live migration.
 - All servers will now migrate from [#!variable!peer_name!#] to: [#!variable!host_name!#]
 		</key>
 		<key name="scancore_warning_0002">Preventative migration complete.</key>
-		<key name="scancore_warning_0003">#!free!#</key>
+		<key name="scancore_warning_0003">While resync'ing the table: [#!variable!table!#] on the database ID: [#!variable!id!#]. Switched the query: [#!variable!query!#] to the public schema.</key>
 		<key name="scancore_warning_0004">#!free!#</key>
 		<key name="scancore_warning_0005">#!free!#</key>
 		<key name="scancore_warning_0006">#!free!#</key>
