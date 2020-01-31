@@ -2511,8 +2511,7 @@ fi
 		message	=>	"#!string!message_0105!#",
 	}});
 	
-	# The 'migrate_options="--unsafe"" is required when using 4kn based disks and it is OK if the cache 
-	# policy is "writethrough".
+	# The 'migrate_options="--unsafe"" is required when using 4kn based disks.
 	my $ccs_exit_code;
 	   $shell_call = "
 ".$an->data->{path}{ccs}." \\
@@ -14005,10 +14004,9 @@ sub _provision_server
 		$provision .= "  --disk path=$lv_device";
 		if ($an->data->{new_server}{virtio}{disk})
 		{
-			### NOTE: Not anymore.
 			# The 'cache=writeback' is required to support systems built on 4kb native sector 
 			# size disks.
-			$provision .= ",bus=virtio,cache=writethrough";
+			$provision .= ",bus=virtio,cache=writeback";
 		}
 		$provision .= " \\\\\n";
 	}
