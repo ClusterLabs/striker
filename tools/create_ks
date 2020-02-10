@@ -466,9 +466,10 @@ clearpart --all --drives=\${DRIVE}
 ignoredisk --only-use=\${DRIVE}
 bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=\${DRIVE}
+part /boot/efi --fstype=efi  --size=200   --asprimary --ondisk=\${DRIVE} 
+part /boot     --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
+part swap      --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
+part /         --fstype ext4 --size=40960 --asprimary --ondisk=\${DRIVE}
 
 END
 
@@ -842,9 +843,10 @@ clearpart --all --drives=\${DRIVE}
 ignoredisk --only-use=\${DRIVE}
 bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
-part     /     --fstype ext4 --size=100   --asprimary --ondisk=\${DRIVE} --grow
+part /boot/efi --fstype=efi  --size=200  --asprimary --ondisk=\${DRIVE} 
+part /boot     --fstype ext4 --size=512  --asprimary --ondisk=\${DRIVE}
+part swap      --fstype swap --size=4096 --asprimary --ondisk=\${DRIVE}
+part /         --fstype ext4 --size=100  --asprimary --ondisk=\${DRIVE} --grow
 
 END
 

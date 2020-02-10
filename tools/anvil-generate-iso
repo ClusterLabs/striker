@@ -105,6 +105,9 @@ my $conf = {
 				syslinux	=>	{
 					target		=>	"syslinux",
 				},
+				efi		=>	{
+					target		=>	"EFI",
+				},
 				ks		=>	{
 					target		=>	"ks",
 				},
@@ -175,6 +178,7 @@ my $conf = {
 			admin_user	=>	"admin",
 			anvil_name	=>	"Anvil!",
 			background	=>	"splash.jpg",
+			uefi_background	=>	"pxe_voyager1.xpm.gz",
 			bcn_netmask	=>	"16",
 			company_name	=>	"Alteeve's Niche! Inc.",
 			byline		=>	"Intelligent Availability Platform",
@@ -368,30 +372,30 @@ sub check_os
 		# We're a RHEL variant.
 		my $os_string  = "";
 		my $shell_call = $conf->{path}{redhat_release};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			$os_string = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_string: [$os_string].\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - os_string: [$os_string].\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
 		
 		if ($os_string =~ /6\./)
 		{
 			$conf->{sys}{local_os} = "el6";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 		}
 		elsif ($os_string =~ /7\./)
 		{
 			$conf->{sys}{local_os} = "el7";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 		}
 		elsif ($os_string =~ /Fedora/)
 		{
 			$conf->{sys}{local_os} = "fedora";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 		}
 	}
 	elsif (-e $conf->{path}{os_release})
@@ -422,23 +426,23 @@ sub check_os
 		my $os_name    = "";
 		my $os_version = "";
 		my $shell_call = $conf->{path}{os_release};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line].\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line].\n" if $conf->{sys}{debug} >= 2;
 			
 			if ($line =~ /NAME="(.*?)"/)
 			{
 				$os_name = lc($line);
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - os_name: [$os_name].\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - os_name: [$os_name].\n" if $conf->{sys}{debug} >= 2;
 			}
 			if ($line =~ /VERSION="(.*?)"/)
 			{
 				$os_version = lc($line);
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - os_version: [$os_version].\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - os_version: [$os_version].\n" if $conf->{sys}{debug} >= 2;
 			}
 		}
 		close $file_handle;
@@ -448,12 +452,12 @@ sub check_os
 			if ($os_name =~ /suse/)
 			{
 				$conf->{sys}{local_os} = "suse";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 			}
 			elsif ($os_name =~ /ubuntu/)
 			{
 				$conf->{sys}{local_os} = "ubuntu";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 			}
 		}
 	}
@@ -468,18 +472,18 @@ sub get_uuid
 	
 	my $uuid       = "";
 	my $shell_call = $conf->{executable}{uuidgen};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		
 		if ($line =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 		{
 			$uuid = $line;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - uuid: [$uuid]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - uuid: [$uuid]\n" if $conf->{sys}{debug} >= 2;
 		}
 		else
 		{
@@ -756,9 +760,10 @@ clearpart --all --drives=\${DRIVE}
 ignoredisk --only-use=\${DRIVE}
 bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=\${DRIVE}
+part /boot/efi --fstype=efi  --size=200   --asprimary --ondisk=\${DRIVE} 
+part /boot     --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
+part swap      --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
+part /         --fstype ext4 --size=40960 --asprimary --ondisk=\${DRIVE}
 
 END
 
@@ -782,6 +787,7 @@ mkdir -p /mnt/sysimage/var/www/html/$os_dir/x86_64/{img,iso,ks,files}
 # PXE/tftp directories
 mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86_64/
 mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
+mkdir /mnt/sysimage/var/lib/tftpboot/efi64
 
 # Create the source mount point.
 mkdir /mnt/source;
@@ -862,6 +868,7 @@ cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/$o
 # A little flair...
 echo 'Setting the PXE wallpaper.'
 cp /mnt/source/syslinux/".$conf->{sys}{ks}{background}." /mnt/sysimage/var/lib/tftpboot/
+cp /mnt/source/efi64/".$conf->{sys}{ks}{uefi_background}." /mnt/sysimage/var/lib/tftpboot/efi64/
 
 # Copy the ".$conf->{sys}{ks}{striker_name}." source files and installer into place
 cp -Rvp /mnt/source/".$conf->{path}{iso}{striker}."                         /mnt/sysimage/root/
@@ -883,6 +890,7 @@ cp      /mnt/source/.treeinfo /mnt/sysimage/var/www/html/$os_dir/x86_64/img/
 
 echo 'Copying isolinux to /var/lib/tftpboot/boot/$os_dir/x86_64/'
 rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86_64/
+rsync -av /mnt/source/EFI/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86_64/
 # */ # Ignore me, I am unbreaking syntax highlighting in vim...
 \%end
 
@@ -1081,19 +1089,54 @@ label rescue
 	MENU LABEL ^B) Rescue installed system
 	TEXT HELP
 
-		Boot the $say_os ".$conf->{sys}{name}{release}." DVD in rescue mode.
+		Boot $say_os ".$conf->{sys}{name}{release}." in rescue mode.
 	ENDTEXT
 	KERNEL boot/$os_dir/x86_64/vmlinuz
 	APPEND initrd=boot/$os_dir/x86_64/initrd.img rescue
+EOF
 
-label memtest86
-	MENU LABEL ^C) Memory test
-	TEXT HELP
+echo 'Writing out the default PXE menu'
+cat > /var/lib/tftpboot/efi64/efidefault << EOF
+timeout 30
+default 0
+splashimage (nd)/pxe_voyager1.xpm.gz
 
-		Test the RAM in the system for defects.
-	ENDTEXT
-	KERNEL memtest
-	APPEND -
+title Boot the next device as configured in your BIOS
+	exit
+
+# Install Node 01 via pxe
+title New ".$conf->{sys}{ks}{anvil_name}." Node 01 - $say_os ".$conf->{sys}{name}{release}." - Deletes All Existing Data!
+	root (nd)
+	macappend
+	kernel /vmlinuz ip=dhcp ks=http://$my_bcn_ip/$os_dir/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
+	initrd /initrd.img
+
+# Install Node 02 via pxe
+title New ".$conf->{sys}{ks}{anvil_name}." Node 02 - $say_os ".$conf->{sys}{name}{release}." - Deletes All Existing Data!
+	root (nd)
+	macappend
+	kernel /vmlinuz ip=dhcp ks=http://$my_bcn_ip/$os_dir/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
+	initrd /initrd.img
+
+# Install Striker 1 via pxe
+title New ".$conf->{sys}{ks}{striker_name}." 01 dashboard - $say_os ".$conf->{sys}{name}{release}." - Deletes All Existing Data!
+        root (nd)
+	macappend
+        kernel /vmlinuz ip=dhcp ks=http://$my_bcn_ip/$os_dir/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif 
+        initrd /initrd.img
+
+# Install Striker 2 via pxe
+title New ".$conf->{sys}{ks}{striker_name}." 02 dashboard - $say_os ".$conf->{sys}{name}{release}." - Deletes All Existing Data!
+	root (nd)
+	macappend
+	kernel /vmlinuz ip=dhcp ks=http://$my_bcn_ip/$os_dir/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
+	initrd /initrd.img
+
+# Rescue Installed System
+Title Rescue installed system
+	root (nd)
+	kernel /vmlinuz rescue
+	initrd /initrd.img
 EOF
 
 # Disable the libvirtd default bridge.
@@ -1163,9 +1206,10 @@ clearpart --all --drives=\${DRIVE}
 ignoredisk --only-use=\${DRIVE}
 bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
-part     /     --fstype ext4 --size=100   --asprimary --ondisk=\${DRIVE} --grow
+part /boot/efi --fstype=efi  --size=200  --asprimary --ondisk=\${DRIVE} 
+part /boot     --fstype ext4 --size=512  --asprimary --ondisk=\${DRIVE}
+part swap      --fstype swap --size=4096 --asprimary --ondisk=\${DRIVE}
+part /         --fstype ext4 --size=100  --asprimary --ondisk=\${DRIVE} --grow
 
 END
 
@@ -1574,17 +1618,17 @@ sub generate_kickstart_files
 	my ($conf) = @_;
 	
 	my $ks_directory = $conf->{path}{iso}{iso_kickstart};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - ks_directory: [$ks_directory]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - ks_directory: [$ks_directory]\n" if $conf->{sys}{debug} >= 2;
 	
 	foreach my $target (sort {$a cmp $b} keys %{$conf->{ks}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - target: [$target]\n" if $conf->{sys}{debug} >= 2;
 		foreach my $machine (sort {$a cmp $b} keys %{$conf->{ks}{$target}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - machine: [$machine]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - machine: [$machine]\n" if $conf->{sys}{debug} >= 2;
 			foreach my $number (sort {$a cmp $b} keys %{$conf->{ks}{$target}{$machine}})
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - number: [$number]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - number: [$number]\n" if $conf->{sys}{debug} >= 2;
 				if ($machine eq "node")
 				{
 					# Nodes have two sources; PXE from striker 1 or 2.
@@ -1592,8 +1636,8 @@ sub generate_kickstart_files
 					{
 						my $ks_file_name = $ks_directory."/pxe-new-node0${number}_from-striker0${source}.ks";
 						my $ks_body      = generate_kickstart_body($conf, $target, $machine, $number, $source);
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - ks_file_name: [$ks_file_name]\n" if $conf->{sys}{debug} >= 2;
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - ks_body:\n====\n$ks_body\n====\n" if $conf->{sys}{debug} >= 3;
+						print __LINE__."; [ Debug ] - ks_file_name: [$ks_file_name]\n" if $conf->{sys}{debug} >= 2;
+						print __LINE__."; [ Debug ] - ks_body:\n====\n$ks_body\n====\n" if $conf->{sys}{debug} >= 3;
 						
 						# Remove the existing kickstart file, if it exists.
 						if (-e $ks_file_name)
@@ -1615,8 +1659,8 @@ sub generate_kickstart_files
 				{
 					my $ks_file_name = $ks_directory."/${target}-new-${machine}0${number}.ks";
 					my $ks_body = generate_kickstart_body($conf, $target, $machine, $number, 0);
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - ks_file_name: [$ks_file_name]\n" if $conf->{sys}{debug} >= 2;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - ks_body:\n====\n$ks_body\n====\n" if $conf->{sys}{debug} >= 3;
+					print __LINE__."; [ Debug ] - ks_file_name: [$ks_file_name]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - ks_body:\n====\n$ks_body\n====\n" if $conf->{sys}{debug} >= 3;
 					
 					# Remove the existing kickstart file, if it exists.
 					if (-e $ks_file_name)
@@ -1647,11 +1691,11 @@ sub prep_packages_repo
 	
 	# Get the '.discinfo' number
 	my $disc_id = get_disc_id($conf);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Walk through 'repodata', clear out old files and get the name of the comps.xml file.
 	my ($xml_file1, $xml_file2) = get_repodata_xml_file_name($conf);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Build the repository
 	build_repository($conf, $disc_id, $xml_file1, $xml_file2);
@@ -1669,20 +1713,20 @@ sub build_iso
 	
 	my $os_type = $conf->{sys}{os_type};
 	my $os_name = $conf->{sys}{name}{$os_type};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - os_name: [$os_name]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - os_name: [$os_name]\n" if $conf->{sys}{debug} >= 2;
 	
 	my $say_date = $conf->{sys}{date}." ".$conf->{sys}{'time'};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - say_date: [$say_date]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - say_date: [$say_date]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Get the current user's name and the hostname.
 	my $say_user = $ENV{USERNAME} ? $ENV{USERNAME} : $ENV{USER};
 	my $say_host = $ENV{HOSTNAME};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - say_user: [$say_user], say_host: [$say_host]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - say_user: [$say_user], say_host: [$say_host]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Put the output path together.
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 	my $output_file = $conf->{sys}{user}{current_dir}."/".$conf->{path}{working_dir}."/".$conf->{path}{iso}{file_name};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - output_file: [$output_file]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - output_file: [$output_file]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Make sure that 'isolinux/isolinux.bin' is writable.
 	my $isolinux_bin = $conf->{path}{iso}{source_directory}."/isolinux/isolinux.bin";
@@ -1701,21 +1745,21 @@ sub build_iso
 	my $say_anvil   =  $conf->{sys}{ks}{anvil_name};
 	   $say_anvil   =~ s/!/\\\\\\/;
 	my $volume_id   = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::name::version: [".$conf->{sys}{name}{version}."], volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - sys::name::version: [".$conf->{sys}{name}{version}."], volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{sys}{name}{version} =~ /^v2/)
 	{
 		$volume_id = "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
 	}
 	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '".$volume_id."' -appid '".$say_anvil." ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file ".$conf->{path}{iso}{source_directory};
 	my $mkisofs_output = "";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		$mkisofs_output .= "$line\n";
 	}
 	close $file_handle;
@@ -1726,18 +1770,18 @@ sub build_iso
 		# All done!
 		print "- New ISO generated. Calculating sum...\n";
 		my $shell_call = $conf->{executable}{md5sum}." ".$output_file;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			
 			if ($line =~ /^(\S+)\s+$output_file/)
 			{
 				$sum = $1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - sum: [$sum]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - sum: [$sum]\n" if $conf->{sys}{debug} >= 2;
 			}
 		}
 		close $file_handle;
@@ -1793,20 +1837,20 @@ sub clean_up
 		foreach my $mount_point (sort {$a cmp $b} @{$conf->{sys}{fuse_mounted}})
 		{
 			my $shell_call = $conf->{executable}{fusermount}." -u ".$mount_point;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			}
 			close $file_handle;
 		}
 	}
 	else
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - fusermount: [".$conf->{executable}{fusermount}."] not found, skipping clean-up.\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - fusermount: [".$conf->{executable}{fusermount}."] not found, skipping clean-up.\n" if $conf->{sys}{debug} >= 2;
 	}
 	
 	return(0);
@@ -1822,13 +1866,13 @@ sub build_repository
 	{
 		$shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file1." -g ".$xml_file2." ".$conf->{path}{iso}{source_directory};
 	}
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		
 		if ($line =~ /Error opening Package/)
 		{
@@ -1855,17 +1899,17 @@ sub get_repodata_xml_file_name
 	my $xml_file1 = "";
 	my $xml_file2 = "";
 	my $source   = $conf->{path}{iso}{source_directory}."/repodata";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 1;
+	print __LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 1;
 	if (-e $source)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 1;
+		print __LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 1;
 		local(*DIR);
 		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
 			my $full_path = $source."/".$file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 1;
+			print __LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 1;
 			
 			#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
 			if ($file =~ /Server\.x86_64\.xml$/)
@@ -1878,22 +1922,22 @@ sub get_repodata_xml_file_name
 			}
 			elsif (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 1;
+				print __LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 1;
 				unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
 			}
 			elsif ($file =~ /comps\.xml$/)
 			{
 				$xml_file1 = $full_path;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $conf->{sys}{debug} >= 1;
+				print __LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $conf->{sys}{debug} >= 1;
 			}
 			elsif ($file =~ /repomd\.xml$/)
 			{
 				$xml_file1 = $full_path;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $conf->{sys}{debug} >= 1;
+				print __LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $conf->{sys}{debug} >= 1;
 			}
 			else
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 1;
+				print __LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 1;
 			}
 		}
 		closedir(DIR);
@@ -1906,7 +1950,7 @@ sub get_repodata_xml_file_name
 		exit(13);
 	}
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $conf->{sys}{debug} >= 1;
+	print __LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $conf->{sys}{debug} >= 1;
 	return($xml_file1, $xml_file2);
 }
 
@@ -1918,16 +1962,16 @@ sub wipe_repodata
 	my $source = $conf->{path}{iso}{source_directory}."/repodata";
 	if (-e $source)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
 		local(*DIR);
 		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
 			my $full_path = $source."/".$file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
 			
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
 			unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path].\n";
 		}
 		closedir(DIR);
@@ -1943,22 +1987,22 @@ sub get_disc_id
 	
 	my $disc_id        = "";
 	my $disc_info_file = $conf->{path}{iso}{source_directory}."/.discinfo";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_info_file: [$disc_info_file]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - disc_info_file: [$disc_info_file]\n" if $conf->{sys}{debug} >= 2;
 	
 	if (-e $disc_info_file)
 	{
 		my $shell_call = $disc_info_file;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			if ((not $disc_id) && ($line =~ /^\d+/))
 			{
 				$disc_id = $line;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
 			}
 		}
 		close $file_handle;
@@ -1999,7 +2043,7 @@ sub get_date
 	
 	$conf->{sys}{date}   = $time{year}."/".$time{pad_mon}."/".$time{pad_mday};
 	$conf->{sys}{'time'} = $time{pad_hour}.":".$time{pad_min}.":".$time{pad_sec};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::date: [".$conf->{sys}{date}."], sys::time: [".$conf->{sys}{'time'}."]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - sys::date: [".$conf->{sys}{date}."], sys::time: [".$conf->{sys}{'time'}."]\n" if $conf->{sys}{debug} >= 2;
 	
 	return(0);
 }
@@ -2023,24 +2067,24 @@ sub download_striker
 	my $os_type          = $conf->{sys}{os_type};
 	if ($conf->{sys}{debug} >= 2)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - out_directory: .. [$out_directory]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_directory: [$source_directory]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - download_default: [$download_default]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - download_master:  [$download_master]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: ....... [$download]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file: ........... [$file]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - out_file: ....... [$out_file]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: .... [$source_name]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - target_name: .... [$target_name]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - striker_latest: . [$striker_latest]\n";
+		print __LINE__."; [ Debug ] - out_directory: .. [$out_directory]\n";
+		print __LINE__."; [ Debug ] - source_directory: [$source_directory]\n";
+		print __LINE__."; [ Debug ] - download_default: [$download_default]\n";
+		print __LINE__."; [ Debug ] - download_master:  [$download_master]\n";
+		print __LINE__."; [ Debug ] - download: ....... [$download]\n";
+		print __LINE__."; [ Debug ] - file: ........... [$file]\n";
+		print __LINE__."; [ Debug ] - out_file: ....... [$out_file]\n";
+		print __LINE__."; [ Debug ] - source_name: .... [$source_name]\n";
+		print __LINE__."; [ Debug ] - target_name: .... [$target_name]\n";
+		print __LINE__."; [ Debug ] - striker_latest: . [$striker_latest]\n";
 	}
 	
 	# If I have an internet connection (and I really should), try to get the latest version from the 
 	# Alteeve site.
 	if ($conf->{switches}{master})
 	{
+		print __LINE__."; [ Debug ] - Download: [$download] as: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 		$download = $download_master;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Download: [$download] as: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 		
 		# We'll set the system version to 'master-<date>' and update the ISO name.
 		$conf->{sys}{name}{version}   =  "master_".$conf->{sys}{date};
@@ -2051,31 +2095,31 @@ sub download_striker
 			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
 		}
 		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download], sys::name::version: [".$conf->{sys}{name}{version}."], path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - download: [$download], sys::name::version: [".$conf->{sys}{name}{version}."], path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 	}
 	elsif ($conf->{switches}{release})
 	{
 		# 
 		print "- Specific release requested: [".$conf->{switches}{release}."]\n";
 		$download = "https://github.com/ClusterLabs/striker/archive/v".$conf->{switches}{release}.".zip";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
 	}
 	else
 	{
 		# Try to get the latest version from the striker_latest file on Alteeve.
 		my $shell_call = $conf->{executable}{curl}." --stderr /dev/null $striker_latest";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			
 			if ($line =~ /^striker:(http.*)$/)
 			{
 				$download = $1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
 			}
 		}
 		close $file_handle;
@@ -2085,31 +2129,31 @@ sub download_striker
 	if ($download =~ /.*\/(.*)\.zip$/)
 	{
 		$conf->{sys}{name}{version}   = $1;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::name::version: [".$conf->{sys}{name}{version}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - sys::name::version: [".$conf->{sys}{name}{version}."]\n" if $conf->{sys}{debug} >= 2;
 		$source_name                  = $source_directory."/striker-".$conf->{sys}{name}{version};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
 		$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 		if ($conf->{sys}{name}{version} =~ /^v/)
 		{
 			$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 		}
 		if ($conf->{sys}{name}{suffix})
 		{
 			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 		}
 		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name], sys::name::version: [".$conf->{sys}{name}{version}."], path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source_name: [$source_name], sys::name::version: [".$conf->{sys}{name}{version}."], path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 		
 		# If the source doesn't exist, try again without a preceding 'v' on the version number.
 		if ((not -e $source_name) && ($conf->{sys}{name}{version} =~ /^v2/))
 		{
 			my $source_version = ($conf->{sys}{name}{version} =~ /^v(.*)$/)[0];
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_version: [$source_version]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source_version: [$source_version]\n" if $conf->{sys}{debug} >= 2;
 			   $source_name    = $source_directory."/striker-".$source_version;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
 		}
 	}
 	
@@ -2124,7 +2168,7 @@ sub download_striker
 		{
 			print "- Removing the old copy and downloading the latest version.\n";
 			unlink $out_file or die __LINE__."; [ Error ] - Failed to delete: [$out_file] to make room for the new file. The error was: $!\n";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 			download_file($conf, $download, $out_file, 0644);
 		}
 	}
@@ -2132,7 +2176,7 @@ sub download_striker
 	{
 		print "- Downloading the Striker source code.\n";
 		print "- This might take a few minutes on slow connections, please be patient.\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $download, $out_file, 0644);
 	}
 	
@@ -2145,13 +2189,13 @@ sub download_striker
 	# Unzip the source file.
 	print "- Extracting the Striker source file.\n";
 	my $shell_call = $conf->{executable}{unzip}." -uo $out_file -d $source_directory";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 	}
 	close $file_handle;
 	
@@ -2160,13 +2204,13 @@ sub download_striker
 	{
 		print "- Removing old Striker from source.\n";
 		my $shell_call = $conf->{executable}{rm}." -rf $target_name";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
 	}
@@ -2194,30 +2238,32 @@ sub copy_files_from_source
 {
 	my ($conf) = @_;
 	
+	$conf->{sys}{debug} = 2;
+	
 	# I need the OS-specific source.
 	my $os_type          = $conf->{sys}{os_type};
 	my $distro_directory = $conf->{path}{zip}{$os_type};
 	my $source_on_iso   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix};
 	if ($conf->{sys}{debug} >= 2)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::striker: ........ [".$conf->{path}{iso}{striker}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::zip_iso: ........ [".$conf->{path}{iso}{zip_iso}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - distro_directory: .......... [$distro_directory]\n";
-		#print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::suffix: ......... [".$conf->{path}{iso}{suffix}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_on_iso: ............. [$source_on_iso]\n";
+		print __LINE__."; [ Debug ] - path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::striker: ........ [".$conf->{path}{iso}{striker}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::zip_iso: ........ [".$conf->{path}{iso}{zip_iso}."]\n";
+		print __LINE__."; [ Debug ] - distro_directory: .......... [$distro_directory]\n";
+		#print __LINE__."; [ Debug ] - path::iso::suffix: ......... [".$conf->{path}{iso}{suffix}."]\n";
+		print __LINE__."; [ Debug ] - source_on_iso: ............. [$source_on_iso]\n";
 	}
 	
 	# isolinux
 	foreach my $directory (sort {$a cmp $b} keys %{$conf->{path}{iso}{zip_copy}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory], path::iso::zip_copy::${directory}::target: [".$conf->{path}{iso}{zip_copy}{$directory}{target}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - directory: [$directory], path::iso::zip_copy::${directory}::target: [".$conf->{path}{iso}{zip_copy}{$directory}{target}."]\n" if $conf->{sys}{debug} >= 2;
 		my $source = $source_on_iso."/".$directory;
 		my $target = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{zip_copy}{$directory}{target});
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
 		   $source =~ s/\/\/+/\//g;
 		   #$target =~ s/\/\/+/\//g;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
 		local(*DIR);
 		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
@@ -2225,11 +2271,12 @@ sub copy_files_from_source
 			next if (($file eq ".") or ($file eq ".."));
 			my $source_file = $source."/".$file;
 			my $target_file = $target."/".$file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file], target_file: [$target_file]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source_file: [$source_file], target_file: [$target_file]\n" if $conf->{sys}{debug} >= 2;
 			copy_file($conf, $source_file, $target_file, 1);
 		}
 		closedir(DIR);
 	}
+	die;
 	
 	return(0);
 }
@@ -2239,7 +2286,7 @@ sub isoread_file
 {
 	my ($conf, $iso, $source, $target) = @_;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso], source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - iso: [$iso], source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
 	if (-e $target)
 	{
 		print "- The target file: [$target] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
@@ -2247,13 +2294,13 @@ sub isoread_file
 	else
 	{
 		my $shell_call = $conf->{executable}{'iso-read'}." --image $iso --extract $source --output-file $target";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
 		if (-e $target)
@@ -2279,7 +2326,7 @@ sub copy_file
 {
 	my ($conf, $source, $target, $force) = @_;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target], force: [$force]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - source: [$source], target: [$target], force: [$force]\n" if $conf->{sys}{debug} >= 2;
 	# Delete the target if 'force'd and target exists.
 	if (($force) && (-e $target))
 	{
@@ -2296,13 +2343,13 @@ sub copy_file
 		# Copy it.
 		print "- Copying the source file: [$source] to: [$target]\n" if $conf->{sys}{debug} >= 2;
 		my $shell_call = $conf->{executable}{cp}." -av $source $target";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 		}
 		close $file_handle;
 		if (-e $target)
@@ -2310,7 +2357,7 @@ sub copy_file
 			# Get the size of the file and the source, make sure they match.
 			my $source_size = (stat($source))[7];
 			my $target_size = (stat($target))[7];
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_size: [$source_size], target_size: [$target_size], force: [$force]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - source_size: [$source_size], target_size: [$target_size], force: [$force]\n" if $conf->{sys}{debug} >= 3;
 			if ($source_size ne $target_size)
 			{
 				print "[ Error ] - The file: [$target] files is not the same size as the source!\n";
@@ -2348,6 +2395,13 @@ sub agree_to_terms
 	
 	system('clear');
 	print "-=] Thank you for using the 'Anvil!' Intelligent Availability platform! [=-\n\n";
+	
+	### We don't prompt the user anymore.
+	$conf->{sys}{third_party}{Fujitsu}{agreed} = 1;
+	$conf->{sys}{third_party}{ASIX}{agreed}    = 1;
+	$conf->{sys}{third_party}{Avago}{agreed}   = 1;
+	return(0);
+	
 	if ($conf->{switches}{'accept-third-party-licenses'})
 	{
 		print "- Third-party licenses agreed via '--accept-third-party-licenses'.\n";
@@ -2470,7 +2524,7 @@ sub download_anrepo_tools
 	
 	# Fujitsu stuff
 	print "- Downloading non-RPM third party tools.\n";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::third_party::ASIX::agreed: [".$conf->{sys}{third_party}{ASIX}{agreed}."].\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - sys::third_party::ASIX::agreed: [".$conf->{sys}{third_party}{ASIX}{agreed}."].\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{sys}{third_party}{ASIX}{agreed})
 	{
 		# ax8817[89] driver
@@ -2478,11 +2532,11 @@ sub download_anrepo_tools
 		my $source    = $conf->{url}{ASIX}{ax8817x}{url};
 		my $target    = $conf->{path}{iso}{iso_asix}."/".$file_name;
 		my $mode      = $conf->{url}{ASIX}{ax8817x}{mode};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::third_party::Fujitsu::agreed: [".$conf->{sys}{third_party}{Fujitsu}{agreed}."].\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - sys::third_party::Fujitsu::agreed: [".$conf->{sys}{third_party}{Fujitsu}{agreed}."].\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{sys}{third_party}{Fujitsu}{agreed})
 	{
 		# Primecollect shar
@@ -2490,7 +2544,7 @@ sub download_anrepo_tools
 		my $source    = $conf->{url}{Fujitsu}{primecollect}{url};
 		my $target    = $conf->{path}{iso}{iso_fujitsu}."/".$file_name;
 		my $mode      = $conf->{url}{Fujitsu}{primecollect}{mode};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}
 	
@@ -2501,7 +2555,7 @@ sub download_anrepo_tools
 		my $source    = $conf->{url}{Tools}{fence_delay}{url};
 		my $target    = $conf->{path}{iso}{iso_fence}."/".$file_name;
 		my $mode      = $conf->{url}{Tools}{fence_delay}{mode};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}
 	
@@ -2512,7 +2566,7 @@ sub download_anrepo_tools
 		my $source    = $conf->{url}{Tools}{fence_apc_alteeve}{url};
 		my $target    = $conf->{path}{iso}{iso_fence}."/".$file_name;
 		my $mode      = $conf->{url}{Tools}{fence_apc_alteeve}{mode};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}
 	
@@ -2523,7 +2577,7 @@ sub download_anrepo_tools
 		my $source    = $conf->{url}{Tools}{fence_raritan_snmp}{url};
 		my $target    = $conf->{path}{iso}{iso_fence}."/".$file_name;
 		my $mode      = $conf->{url}{Tools}{fence_raritan_snmp}{mode};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}
 	
@@ -2546,18 +2600,18 @@ sub download_file
 		# Get the file size so that we can warn the user
 		my $size       = "";
 		my $shell_call = $conf->{executable}{curl}." --head $source";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			   $line =~ s/\r//;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 			if ($line =~ /Content-Length: (\d+)$/)
 			{
 				$size = $1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - size: [$size]\n" if $conf->{sys}{debug} >= 2;
 			}
 		}
 		close $file_handle;
@@ -2576,18 +2630,18 @@ sub download_file
 		### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
 		###       debug is enabled, we'll dump the progress to the screen.
 		$shell_call = $conf->{executable}{curl}." $source 2>/dev/null > $target";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		if ($conf->{sys}{debug})
 		{
 			$shell_call = $conf->{executable}{curl}." $source > $target";
 		}
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open ($file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
 		
@@ -2597,7 +2651,7 @@ sub download_file
 			# If the file is less than 1024 bytes, read it in to make sure it is not a 
 			# failure message.
 			my $size = (stat($target))[7];
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $conf->{sys}{debug} >= 1;
+			print __LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $conf->{sys}{debug} >= 1;
 			if ($size < 1024)
 			{
 				# Is it binary or text? If it is text, make sure it is not a failure message.
@@ -2613,19 +2667,19 @@ sub download_file
 				{
 					# Yay!
 					$file_ok = 1;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $conf->{sys}{debug} >= 1;
+					print __LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $conf->{sys}{debug} >= 1;
 				}
 				else
 				{
 					# Read it in.
 					my $shell_call = $target;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 					open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 					while(<$file_handle>)
 					{
 						chomp;
 						my $line = $_;
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+						print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 						if ($line =~ /Could not resolve host/i)
 						{
 							# Bad URL
@@ -2651,7 +2705,7 @@ sub download_file
 							
 							# Download the new source
 							print "Redirected.\n";
-							print "$THIS_FILE ".__LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $conf->{sys}{debug} >= 1;
+							print __LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $conf->{sys}{debug} >= 1;
 							download_file($conf, $new_source, $target, $mode);
 							return(0);
 						}
@@ -2663,10 +2717,10 @@ sub download_file
 			{
 				# Too big to be a failure, so we're probably good.
 				$file_ok = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $conf->{sys}{debug} >= 1;
+				print __LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $conf->{sys}{debug} >= 1;
 			}
 		}
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $conf->{sys}{debug} >= 1;
+		print __LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $conf->{sys}{debug} >= 1;
 		if ($file_ok)
 		{
 			my $duration = time - $start_time;
@@ -2762,19 +2816,19 @@ sub download_anrepo_rpms
 	foreach my $arch ("x86_64", "noarch")
 	{
 		my $shell_call = $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 			if ($line =~ /href="(.*?)">/)
 			{
 				my $download_package = $1;
 				next if $download_package !~ /\.rpm$/;
 				my $download_url =  $conf->{url}{'an-repo'}."/$arch/$download_package";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - arch: [$arch], download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ] - arch: [$arch], download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 3;
 				$conf->{download_packages}{$download_package} = $download_url;
 			}
 		}
@@ -2786,16 +2840,16 @@ sub download_anrepo_rpms
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 		my $found         = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
 		
 		foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
 		{
 			next if $download_package !~ /^\Q$file\E/;
 			next if $download_package !~ /\Q$arch\E/;
-			print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
 			if ($download_package =~ /^\Q$file\E-\d/)
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
 				$found++;
 				$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
 			}
@@ -2809,22 +2863,22 @@ sub download_anrepo_rpms
 	# Find the packages in the Third Party repo
 	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [".$conf->{sys}{third_party}{$vendor}{agreed}."]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [".$conf->{sys}{third_party}{$vendor}{agreed}."]\n" if $conf->{sys}{debug} >= 3;
 		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{third_party}."/$vendor/";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 			if ($line =~ /href="(.*?)">/)
 			{
 				my $download_package = $1;
 				next if $download_package !~ /\.rpm$/;
 				my $download_url =  $conf->{url}{third_party}."/$vendor/$download_package";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ] - download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 3;
 				$conf->{download_packages}{$download_package} = $download_url;
 			}
 		}
@@ -2833,22 +2887,22 @@ sub download_anrepo_rpms
 	# Match our requirements to the packages available in the third party repo
 	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [".$conf->{sys}{third_party}{$vendor}{agreed}."]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [".$conf->{sys}{third_party}{$vendor}{agreed}."]\n" if $conf->{sys}{debug} >= 3;
 		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{third_party}{$vendor}})
 		{
 			my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 			my $found         = 0;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
 			
 			foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
 			{
 				next if $download_package !~ /^\Q$file\E/;
 				next if $download_package !~ /\Q$arch\E/;
-				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
 				if ($download_package =~ /^\Q$file\E-\d/)
 				{
-					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 3;
+					print __LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 3;
 					$found++;
 					$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
 				}
@@ -2933,17 +2987,17 @@ sub setup_build_environment
 	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
 	if ($conf->{sys}{debug} >= 2)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::source_path: .......... [".$conf->{path}{source_path}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::working_directory: [".$conf->{path}{iso}{working_directory}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory:  [".$conf->{path}{iso}{source_directory}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_tools: ....... [".$conf->{path}{iso}{iso_tools}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_kickstart: ... [".$conf->{path}{iso}{iso_kickstart}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_packages: .... [".$conf->{path}{iso}{iso_packages}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_striker: ..... [".$conf->{path}{iso}{iso_striker}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fence: ....... [".$conf->{path}{iso}{iso_fence}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fujitsu: ..... [".$conf->{path}{iso}{iso_fujitsu}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_asix: ........ [".$conf->{path}{iso}{iso_asix}."]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_avago: ....... [".$conf->{path}{iso}{iso_avago}."]\n";
+		print __LINE__."; [ Debug ] - path::source_path: .......... [".$conf->{path}{source_path}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::working_directory: [".$conf->{path}{iso}{working_directory}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::source_directory:  [".$conf->{path}{iso}{source_directory}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_tools: ....... [".$conf->{path}{iso}{iso_tools}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_kickstart: ... [".$conf->{path}{iso}{iso_kickstart}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_packages: .... [".$conf->{path}{iso}{iso_packages}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_striker: ..... [".$conf->{path}{iso}{iso_striker}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_fence: ....... [".$conf->{path}{iso}{iso_fence}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_fujitsu: ..... [".$conf->{path}{iso}{iso_fujitsu}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_asix: ........ [".$conf->{path}{iso}{iso_asix}."]\n";
+		print __LINE__."; [ Debug ] - path::iso::iso_avago: ....... [".$conf->{path}{iso}{iso_avago}."]\n";
 	}
 	
 	# Make sure any old repodata files are removed.
@@ -2952,22 +3006,22 @@ sub setup_build_environment
 	# Assemble the final ISO name
 	my $os_type                      = $conf->{sys}{os_type};
 	   $conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
+	print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
 	if ($conf->{sys}{name}{version} =~ /^v/)
 	{
 		$conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
 	}
 	if ($conf->{sys}{name}{suffix})
 	{
 		$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
 	}
 	$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
+	print __LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
 	
 	# This will be where we look for updated RPMs.
 	$conf->{path}{updates_dir} = $conf->{sys}{user}{current_dir}."/".$conf->{path}{updates_dir}."/".$conf->{sys}{name}{$os_type};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::updates_dir: [".$conf->{path}{updates_dir}."]\n" if $conf->{sys}{debug} >= 3;
+	print __LINE__."; [ Debug ] - path::updates_dir: [".$conf->{path}{updates_dir}."]\n" if $conf->{sys}{debug} >= 3;
 	
 	return(0);
 }
@@ -2976,29 +3030,29 @@ sub setup_build_environment
 sub make_directory
 {
 	my ($conf, $directory) = @_;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
+	print __LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	
 	# If the directory starts with '/', we're building from /. If the directory starts with '~', we're 
 	# building from the user's home.
 	if ($directory =~ /^~/)
 	{
 		$directory =~ s/^~/$conf->{sys}{user}{home}/;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	}
 	if ($directory !~ /^\//)
 	{
 		$directory = $ENV{PWD}."/".$directory;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	}
 	$directory =~ s/\/+/\//g;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
+	print __LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	
 	my $current_directory = "";
 	foreach my $sub_directory (split/\//, $directory)
 	{
 		next if not $sub_directory;
 		$current_directory .= "/$sub_directory";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 3;
 		
 		if (not -e $current_directory)
 		{
@@ -3007,7 +3061,7 @@ sub make_directory
 		}
 	}
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 3;
+	print __LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 3;
 	return($current_directory);
 }
 
@@ -3043,22 +3097,22 @@ sub build_source
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 		my $found         = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
 		
 		foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 3;
 			foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 				foreach my $source_package (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 				{
 					next if $source_package !~ /^\Q$file\E/;
 					next if $source_package !~ /\Q$arch\E/;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
+					print __LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
 					if ($source_package =~ /^\Q$file\E-\d/)
 					{
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 3;
+						print __LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 3;
 						$found++;
 						$conf->{copy}{$package} = {
 							source    => $iso,
@@ -3092,7 +3146,7 @@ sub build_source
 		my $destination = $conf->{path}{iso}{iso_packages}."/".$conf->{copy}{$package}{file};
 		if (-e $destination)
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 3;
 		}
 		else
 		{
@@ -3114,6 +3168,7 @@ sub build_source
 	}
 	print "- Packages copied. Copying auxiliary source files now.\n";
 	
+	$conf->{sys}{debug} = 2;
 	# Now copy the rest of the source files. Note that we'll watch for 'syslinux' and if we don't see it,
 	# we'll copy 'isolinux' over.
 	my $syslinux_found = 0;
@@ -3121,17 +3176,17 @@ sub build_source
 	{
 		# We only care about disk 1
 		next if $conf->{source}{$iso}{name} !~ /disk 1/i;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso] -> [".$conf->{source}{$iso}{name}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - ISO: [$iso] -> [".$conf->{source}{$iso}{name}."]\n" if $conf->{sys}{debug} >= 2;
 		foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
 		{
 			# Skip '/Packages'
 			next if $directory =~ /\/Packages$/;
 			$syslinux_found = 1 if $directory =~ /\/syslinux$/;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
 			foreach my $file (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 			{
 				next if $file eq "TRANS.TBL";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$directory/$file]\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ] - file: [$directory/$file]\n" if $conf->{sys}{debug} >= 3;
 				# To determine the copy target, we first need to strip off the mount point 
 				# (if mounted) and append it to the source directory.
 				my $destination           = "";
@@ -3150,13 +3205,13 @@ sub build_source
 				}
 				$destination           =~ s/\/+/\//g;
 				$destination_directory =~ s/\/+/\//g;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - destination: [$destination], destination_directory: [$destination_directory]\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ] - destination: [$destination], destination_directory: [$destination_directory]\n" if $conf->{sys}{debug} >= 3;
 				# Create the destination directory if needed
 				$destination_directory = make_directory($conf, $destination_directory);
 				
 				if (-e $destination)
 				{
-					print "$THIS_FILE ".__LINE__."; [ Debug ]- The file: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 3;
+					print __LINE__."; [ Debug ]- The file: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 3;
 				}
 				else
 				{
@@ -3183,13 +3238,13 @@ sub build_source
 	}
 	
 	print "- Verifying 'syslinux' was created.\n";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - syslinux_found: [$syslinux_found]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - syslinux_found: [$syslinux_found]\n" if $conf->{sys}{debug} >= 2;
 	if (not $syslinux_found)
 	{
 		print "- The 'syslinux' directory was not in the source. Creating it now, if needed.\n";
 		my $isolinux_directory = $conf->{path}{iso}{source_directory}."/isolinux";
 		my $syslinux_directory = $conf->{path}{iso}{source_directory}."/syslinux";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - isolinux_directory: [$isolinux_directory], syslinux_directory: [$syslinux_directory]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - isolinux_directory: [$isolinux_directory], syslinux_directory: [$syslinux_directory]\n" if $conf->{sys}{debug} >= 2;
 		$syslinux_directory = make_directory($conf, $syslinux_directory);
 		
 		# Read all the files in isolinux. For each file we find, copy it to syslinux if it doesn't 
@@ -3203,13 +3258,21 @@ sub build_source
 			   $destination_file =~ s/isolinux/syslinux/;
 			my $source_path      =  $isolinux_directory."/".$file;
 			my $destination_path =  $syslinux_directory."/".$destination_file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_path: [$source_path], destination_path: [$destination_path]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source_path: [$source_path], destination_path: [$destination_path]\n" if $conf->{sys}{debug} >= 2;
 			copy_file($conf, $source_path, $destination_path, 0);
 		}
 		closedir(DIR);
 	}
 	
+	# Check that EFI is setup.
 	print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
+	print "- Verifying 'EFI' is setup.\n";
+	my $efi_directory       = $conf->{path}{iso}{source_directory}."/EFI";
+	my $source_bootx64_conf = $conf->{path}{iso}{source_directory}."/";
+	print __LINE__."; [ Debug ] - efi_directory: [$efi_directory]\n" if $conf->{sys}{debug} >= 2;
+	
+	#copy_file($conf, $source_path, $destination_path, 0);
+	die;
 	
 	return(0);
 }
@@ -3222,26 +3285,26 @@ sub prep_source
 	# First, are the sources already mounted?
 	foreach my $iso (sort {$a cmp $b} @{$conf->{sys}{source}{iso}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 2;
 		$conf->{source}{$iso}{mount}       = "";
 		$conf->{source}{$iso}{source_file} = ($iso =~ /^.*\/(.*)$/)[0];
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::source_file: [".$conf->{source}{$iso}{source_file}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source::${iso}::source_file: [".$conf->{source}{$iso}{source_file}."]\n" if $conf->{sys}{debug} >= 2;
 		my $shell_call = $conf->{executable}{mount};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::source_file: [".$conf->{source}{$iso}{source_file}."]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source::${iso}::source_file: [".$conf->{source}{$iso}{source_file}."]\n" if $conf->{sys}{debug} >= 2;
 			
 			die if not defined $conf->{source}{$iso}{source_file};
 			
 			if ($line =~ /^\/.*?\/\Q$conf->{source}{$iso}{source_file}\E on (.*?) /)
 			{
 				$conf->{source}{$iso}{mount} = $1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::mount: [".$conf->{source}{$iso}{mount}."]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - source::${iso}::mount: [".$conf->{source}{$iso}{mount}."]\n" if $conf->{sys}{debug} >= 2;
 				print "- The source ISO: [$iso] was found to be mounted at: [".$conf->{source}{$iso}{mount}."].\n";
 			}
 		}
@@ -3251,7 +3314,7 @@ sub prep_source
 		if ((not $conf->{source}{$iso}{mount}) && ($conf->{source}{$iso}{fuse_mount}))
 		{
 			$conf->{source}{$iso}{mount} = $conf->{source}{$iso}{fuse_mount};
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::mount: [".$conf->{source}{$iso}{mount}."]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source::${iso}::mount: [".$conf->{source}{$iso}{mount}."]\n" if $conf->{sys}{debug} >= 2;
 		}
 		
 		# If the source isn't mounted, we'll need to try and read the files out of the ISO directly because
@@ -3263,7 +3326,7 @@ sub prep_source
 			if ((-x $conf->{executable}{isoinfo}) && (-x $conf->{executable}{'iso-read'}))
 			{
 				# We're good to use this method to get our files.
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - 'isoinfo' and 'iso-read' found!\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - 'isoinfo' and 'iso-read' found!\n" if $conf->{sys}{debug} >= 2;
 			}
 			else
 			{
@@ -3286,7 +3349,7 @@ sub prep_source
 		# Now get a list of the source files.
 		$conf->{source}{$iso}{files_read}       = 0;
 		$conf->{source}{$iso}{directories_read} = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::mount: [".$conf->{source}{$iso}{mount}."]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - source::${iso}::mount: [".$conf->{source}{$iso}{mount}."]\n" if $conf->{sys}{debug} >= 2;
 		if (not $conf->{source}{$iso}{mount})
 		{
 			# We'll neeed to dig the file names out the hard way.
@@ -3295,7 +3358,7 @@ sub prep_source
 			my $directories = 0;
 			my $in_path     = "";
 			my $shell_call  = $conf->{executable}{isoinfo}." -lR -i ".$iso;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
@@ -3305,13 +3368,13 @@ sub prep_source
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
 				next if not $line;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 				
 				if ($line =~ /Directory listing of (\/.*)?/)
 				{
 					$in_path = $1;
 					$in_path =~ s/\/$// if $in_path ne "/";
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - in_path: [$in_path]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - in_path: [$in_path]\n" if $conf->{sys}{debug} >= 2;
 					$conf->{source}{$iso}{directories_read}++;
 				}
 				
@@ -3322,9 +3385,9 @@ sub prep_source
 					my $file  = $2;
 					next if (($file eq ".") or ($file eq ".."));
 					die __LINE__."; Failed to parse file name from: [$line]\n" if not $line;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$file], bytes: [$bytes]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - file: [$file], bytes: [$bytes]\n" if $conf->{sys}{debug} >= 2;
 					$conf->{source_packages}{$iso}{$in_path}{$file} = $bytes;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - source_packages::${iso}::${in_path}::${file}: [".$conf->{source_packages}{$iso}{$in_path}{$file}."]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - source_packages::${iso}::${in_path}::${file}: [".$conf->{source_packages}{$iso}{$in_path}{$file}."]\n" if $conf->{sys}{debug} >= 2;
 					$conf->{source}{$iso}{files_read}++;
 				}
 			}
@@ -3354,14 +3417,14 @@ sub prep_source
 	my $package_count = 0;
 	foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 3;
+		print __LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 3;
 		foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
+			print __LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 			foreach my $file (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 			{
 				next if $file !~ /\.rpm$/;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Source: [$iso]:[$directory]:[$file]\n" if $conf->{sys}{debug} >= 3;
+				print __LINE__."; [ Debug ] - Source: [$iso]:[$directory]:[$file]\n" if $conf->{sys}{debug} >= 3;
 				$package_count++;
 			}
 		}
@@ -3378,20 +3441,20 @@ sub read_directory
 {
 	my ($conf, $iso, $directory) = @_;
 	$conf->{source}{$iso}{directories_read}++;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso], directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - iso: [$iso], directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
 	
 	my $source_path =  $directory;
 	   $source_path =~ s/^$iso//;
 	   $source_path =~ s/\/$//;
 	   $source_path =  "/$source_path" if $source_path !~ /^\//;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Reading in the contents of: [$directory], recording as: [$source_path]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - Reading in the contents of: [$directory], recording as: [$source_path]\n" if $conf->{sys}{debug} >= 2;
 	local(*DIR);
 	opendir(DIR, $directory) or die __LINE__."; Failed to open the directory: [$directory], error was: $!\n";
 	while (my $file = readdir(DIR))
 	{
 		next if (($file eq ".") or ($file eq ".."));
 		my $this_path = $directory."/".$file;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - this_path: [$this_path]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - this_path: [$this_path]\n" if $conf->{sys}{debug} >= 2;
 		if (-d $this_path)
 		{
 			read_directory($conf, $iso, $this_path);
@@ -3400,7 +3463,7 @@ sub read_directory
 		{
 			# Record the size. (position 7 in the returned array)
 			$conf->{source_packages}{$iso}{$source_path}{$file} = (stat($this_path))[7];
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_packages:${iso}::${source_path}::${file}: [".$conf->{source_packages}{$iso}{$source_path}{$file}."]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source_packages:${iso}::${source_path}::${file}: [".$conf->{source_packages}{$iso}{$source_path}{$file}."]\n" if $conf->{sys}{debug} >= 2;
 			$conf->{source}{$iso}{files_read}++;
 		}
 	}
@@ -3414,7 +3477,7 @@ sub validate_source
 {
 	my ($conf) = @_;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::source: [".$conf->{switches}{source}."]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - switches::source: [".$conf->{switches}{source}."]\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{switches}{source})
 	{
 		foreach my $source (split/,/, $conf->{switches}{source})
@@ -3428,7 +3491,7 @@ sub validate_source
 			{
 				$source =~ s/^\./$running_directory/;;
 			}
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
 			push @{$conf->{sys}{source}{iso}}, $source;
 		}
 	}
@@ -3442,13 +3505,13 @@ sub validate_source
 	my $disk = 1;
 	foreach my $iso (sort {$a cmp $b} @{$conf->{sys}{source}{iso}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 2;
 		if (-e $iso)
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Parsing source: [$iso]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - Parsing source: [$iso]\n" if $conf->{sys}{debug} >= 2;
 			
 			($conf->{source}{$iso}{directory}, $conf->{source}{$iso}{file}) = ($iso =~ /^(.*)\/(.*)$/);
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Source directory: [".$conf->{source}{$iso}{directory}."], file: [".$conf->{source}{$iso}{file}."]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - Source directory: [".$conf->{source}{$iso}{directory}."], file: [".$conf->{source}{$iso}{file}."]\n" if $conf->{sys}{debug} >= 2;
 		}
 		else
 		{
@@ -3504,18 +3567,18 @@ sub validate_source
 			print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
 			   $conf->{source}{$iso}{sum} = "";
 			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 				
 				if ($line =~ /^(\S+)\s+$iso/)
 				{
 					$conf->{source}{$iso}{sum} = $1;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [".$conf->{source}{$iso}{sum}."]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - source::${iso}::sum: [".$conf->{source}{$iso}{sum}."]\n" if $conf->{sys}{debug} >= 2;
 				}
 			}
 			close $file_handle;
@@ -3525,8 +3588,8 @@ sub validate_source
 			{
 				foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
 				{
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [".$conf->{source}{$iso}{sum}."]\n" if $conf->{sys}{debug} >= 2;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - this_sum:            [$this_sum]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - source::${iso}::sum: [".$conf->{source}{$iso}{sum}."]\n" if $conf->{sys}{debug} >= 2;
+					print __LINE__."; [ Debug ] - this_sum:            [$this_sum]\n" if $conf->{sys}{debug} >= 2;
 					if ($conf->{source}{$iso}{sum} eq $this_sum)
 					{
 						# Match!
@@ -3576,7 +3639,7 @@ sub validate_source
 	
 	# If this is Ubuntu, 'iso-read' is broken (at least on 16.04), so see if 'fuseiso' is installed and,
 	# if so, mount the ISOs.
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."], executable::fuseiso: [".$conf->{executable}{fuseiso}."]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."], executable::fuseiso: [".$conf->{executable}{fuseiso}."]\n" if $conf->{sys}{debug} >= 2;
 	if (($conf->{sys}{local_os} eq "ubuntu") && (-x $conf->{executable}{fuseiso}))
 	{
 		my $i = 1;
@@ -3589,7 +3652,7 @@ sub validate_source
 			if (-e $test_file)
 			{
 				# Make a note to clean it up
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - skipping: [$iso], found: [$test_file] already.\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - skipping: [$iso], found: [$test_file] already.\n" if $conf->{sys}{debug} >= 2;
 				$i++;
 				push @{$conf->{sys}{fuse_mounted}}, $mount_point;
 				$conf->{source}{$iso}{fuse_mount} = $mount_point;
@@ -3597,13 +3660,13 @@ sub validate_source
 			}
 			
 			my $shell_call  = $conf->{executable}{fuseiso}." -p ".$iso." ".$mount_point;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+			print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			}
 			close $file_handle;
 			
@@ -3620,13 +3683,13 @@ sub validate_source
 sub find_executables
 {
 	my ($conf) = @_;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Searching for executables...\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - Searching for executables...\n" if $conf->{sys}{debug} >= 2;
 	
 	my $ok = 1;
 	foreach my $executable (sort {$a cmp $b} keys %{$conf->{executable}})
 	{
 		next if $conf->{executable}{$executable} =~ /^\//;
-		print "$THIS_FILE ".__LINE__."; [ Debug ]   - Program: [$executable]... \n" if $conf->{sys}{debug} >= 2;
+		print __LINE__."; [ Debug ]   - Program: [$executable]... \n" if $conf->{sys}{debug} >= 2;
 		foreach my $path (split/:/, $ENV{'PATH'})
 		{
 			my $test_path = "$path/$executable";
@@ -3634,7 +3697,7 @@ sub find_executables
 			{
 				# Found it.
 				$conf->{executable}{$executable} = $test_path;
-				print "$THIS_FILE ".__LINE__."; [ Debug ]     - Found it: [".$conf->{executable}{$executable}."].\n" if $conf->{sys}{debug} >= 2;
+				print __LINE__."; [ Debug ]     - Found it: [".$conf->{executable}{$executable}."].\n" if $conf->{sys}{debug} >= 2;
 				last;
 			}
 		}
@@ -4717,7 +4780,7 @@ sub get_switches
 	{
 		foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::$variable: [".$conf->{switches}{$variable}."]\n";
+			print __LINE__."; [ Debug ] - switches::$variable: [".$conf->{switches}{$variable}."]\n";
 		}
 	}
 	
@@ -4748,7 +4811,9 @@ Alteeve's Niche!.
 
 
 SWITCHES
-
+";
+# Removed for now.
+=cut
 --accept-third-party-licenses
 
 	This switch confirms that you have read and agree to the following 
@@ -4765,7 +4830,8 @@ SWITCHES
 	
 	With this agreement, support for this hardware will be added to the
 	Anvil! ISO.
-
+=cut;
+	$help .= "
 -h, -?, --help
 
 	Show this dialogue and exit.
@@ -4821,11 +4887,11 @@ EXAMPLES
 
 	Build a RHEL-based Anvil! ISO:
 	
-		./anvil-generate-iso --source ./rhel-server-6.9-x86_64-dvd.iso
+		./anvil-generate-iso --source ./rhel-server-6.10-x86_64-dvd.iso
 	
 	Build a CentOS-based Anvil ISO:
 	
-		./anvil-generate-iso --source ./CentOS-6.9-x86_64-bin-DVD1.iso,./CentOS-6.9-x86_64-bin-DVD2.iso
+		./anvil-generate-iso --source ./CentOS-6.10-x86_64-bin-DVD1.iso,./CentOS-6.10-x86_64-bin-DVD2.iso
 	
                   
 SUPPORT
