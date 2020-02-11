@@ -1753,7 +1753,7 @@ sub build_iso
 	}
 	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '".$volume_id."' -appid '".$say_anvil." ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file ".$conf->{path}{iso}{source_directory};
 	my $mkisofs_output = "";
-	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
@@ -2229,6 +2229,36 @@ sub download_striker
 	
 	# Generate kickstart files.
 	generate_kickstart_files($conf);
+	
+	# Check that EFI is setup.
+	if (1)
+	{
+		print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
+		print "- Verifying 'EFI' is setup.\n";
+		my $os_type             = $conf->{sys}{os_type};
+		my $distro_directory    = $conf->{path}{zip}{$os_type};
+		my $source_bootx64_conf = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix}."/EFI/BOOT/BOOTX64.conf";
+		my $target_bootx64_conf = $conf->{path}{iso}{source_directory}."/EFI/BOOT/BOOTX64.conf";
+		my $source_background   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix}."/EFI/BOOT/pxe_voyager1.xpm.gz";
+		my $target_background   = $conf->{path}{iso}{source_directory}."/EFI/BOOT/pxe_voyager1.xpm.gz";
+		my $target_bootx64_efi  = $conf->{path}{iso}{source_directory}."/EFI/BOOT/BOOTX64.efi";
+		print __LINE__."; [ Debug ]
+- path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]
+- path::iso::striker: ........ [".$conf->{path}{iso}{striker}."]
+- path::iso::zip_iso: ........ [".$conf->{path}{iso}{zip_iso}."]
+- distro_directory: .......... [".$distro_directory."]
+- path::zip::suffix: ......... [".$conf->{path}{zip}{suffix}."]
+- source_bootx64_conf: ....... [".$source_bootx64_conf."]
+- target_bootx64_conf: ....... [".$target_bootx64_conf."]
+- source_background: ......... [".$source_background."]
+- target_background: ......... [".$target_background."]
+" if $conf->{sys}{debug} >= 2;
+		copy_file($conf, $source_bootx64_conf, $target_bootx64_conf, 1);
+		copy_file($conf, $source_background,   $target_background, 1);
+		
+		# Make sure the BOOTX64.efi file is set to 755.
+		chmod "0755", $target_bootx64_efi;
+	}
 	
 	return(0);
 }
@@ -3260,31 +3290,6 @@ sub build_source
 		}
 		closedir(DIR);
 	}
-	
-	$conf->{sys}{old_debug} = $conf->{sys}{debug};
-	$conf->{sys}{debug}     = 2;
-	
-	# Check that EFI is setup.
-	if (1)
-	{
-		print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
-		print "- Verifying 'EFI' is setup.\n";
-		my $os_type             = $conf->{sys}{os_type};
-		my $distro_directory    = $conf->{path}{zip}{$os_type};
-		my $source_bootx64_conf = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix}."/EFI/BOOT/BOOTX64.conf";
-		my $target_bootx64_conf = $conf->{path}{iso}{source_directory}."/EFI/BOOT/BOOTX64.conf";
-		my $source_background   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix}."/EFI/BOOT/pxe_voyager1.xpm.gz";
-		my $target_background   = $conf->{path}{iso}{source_directory}."/EFI/BOOT/pxe_voyager1.xpm.gz";
-		print __LINE__."; [ Debug ]
-- source_bootx64_conf: [".$source_bootx64_conf."]
-- target_bootx64_conf: [".$target_bootx64_conf."]
-- source_background: . [".$source_background."]
-- target_background: . [".$target_background."]
-" if $conf->{sys}{debug} >= 2;
-		copy_file($conf, $source_bootx64_conf, $target_bootx64_conf, 1);
-		copy_file($conf, $source_background,   $target_background, 1);
-	}
-	$conf->{sys}{debug} = $conf->{sys}{old_debug};
 	
 	return(0);
 }
