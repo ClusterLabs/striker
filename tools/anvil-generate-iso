@@ -105,7 +105,7 @@ my $conf = {
 				syslinux	=>	{
 					target		=>	"syslinux",
 				},
-				efi		=>	{
+				EFI		=>	{
 					target		=>	"EFI",
 				},
 				ks		=>	{
@@ -2052,7 +2052,7 @@ sub get_date
 sub download_striker
 {
 	my ($conf) = @_;
-	
+
 	# The github source file is simply 'master', so we save it as the 'url::striker_zip_file'.
 	my $out_directory    = $conf->{path}{iso}{working_directory};
 	my $source_directory = $conf->{path}{iso}{source_directory};
@@ -2238,12 +2238,10 @@ sub copy_files_from_source
 {
 	my ($conf) = @_;
 	
-	$conf->{sys}{debug} = 2;
-	
 	# I need the OS-specific source.
 	my $os_type          = $conf->{sys}{os_type};
 	my $distro_directory = $conf->{path}{zip}{$os_type};
-	my $source_on_iso   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix};
+	my $source_on_iso    = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix};
 	if ($conf->{sys}{debug} >= 2)
 	{
 		print __LINE__."; [ Debug ] - path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]\n";
@@ -2276,7 +2274,6 @@ sub copy_files_from_source
 		}
 		closedir(DIR);
 	}
-	die;
 	
 	return(0);
 }
@@ -2331,7 +2328,7 @@ sub copy_file
 	if (($force) && (-e $target))
 	{
 		print "- The target file: [$target] exists and the copy is forced, deleting the old file.\n" if $conf->{sys}{debug} >= 2;
-		unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] to make room for the new file. The error was: $!\n";
+		unlink $target or warn __LINE__."; [ Warning ] - Failed to delete: [$target] to make room for the new file. The error was: [".$!."]. Will try to proceed...\n";
 	}
 	# Copy unless the target exists.
 	if (-e $target)
@@ -3168,7 +3165,7 @@ sub build_source
 	}
 	print "- Packages copied. Copying auxiliary source files now.\n";
 	
-	$conf->{sys}{debug} = 2;
+	#$conf->{sys}{debug} = 2;
 	# Now copy the rest of the source files. Note that we'll watch for 'syslinux' and if we don't see it,
 	# we'll copy 'isolinux' over.
 	my $syslinux_found = 0;
@@ -3264,15 +3261,30 @@ sub build_source
 		closedir(DIR);
 	}
 	
-	# Check that EFI is setup.
-	print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
-	print "- Verifying 'EFI' is setup.\n";
-	my $efi_directory       = $conf->{path}{iso}{source_directory}."/EFI";
-	my $source_bootx64_conf = $conf->{path}{iso}{source_directory}."/";
-	print __LINE__."; [ Debug ] - efi_directory: [$efi_directory]\n" if $conf->{sys}{debug} >= 2;
+	$conf->{sys}{old_debug} = $conf->{sys}{debug};
+	$conf->{sys}{debug}     = 2;
 	
-	#copy_file($conf, $source_path, $destination_path, 0);
-	die;
+	# Check that EFI is setup.
+	if (1)
+	{
+		print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
+		print "- Verifying 'EFI' is setup.\n";
+		my $os_type             = $conf->{sys}{os_type};
+		my $distro_directory    = $conf->{path}{zip}{$os_type};
+		my $source_bootx64_conf = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix}."/EFI/BOOT/BOOTX64.conf";
+		my $target_bootx64_conf = $conf->{path}{iso}{source_directory}."/EFI/BOOT/BOOTX64.conf";
+		my $source_background   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix}."/EFI/BOOT/pxe_voyager1.xpm.gz";
+		my $target_background   = $conf->{path}{iso}{source_directory}."/EFI/BOOT/pxe_voyager1.xpm.gz";
+		print __LINE__."; [ Debug ]
+- source_bootx64_conf: [".$source_bootx64_conf."]
+- target_bootx64_conf: [".$target_bootx64_conf."]
+- source_background: . [".$source_background."]
+- target_background: . [".$target_background."]
+" if $conf->{sys}{debug} >= 2;
+		copy_file($conf, $source_bootx64_conf, $target_bootx64_conf, 1);
+		copy_file($conf, $source_background,   $target_background, 1);
+	}
+	$conf->{sys}{debug} = $conf->{sys}{old_debug};
 	
 	return(0);
 }

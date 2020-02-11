@@ -60,6 +60,7 @@
 # 41 - Failed to install AN::Tools
 # 42 - Failed to enable or disable ScanCore.
 # 43 - User specified a host UUID, but it is invalid.
+# 44 - The UEFI boot file wasn't found
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it is usually too small.
@@ -127,8 +128,8 @@ my $conf = {
 		media			=>	"/var/www/home/media",
 		perl_library		=>	"/usr/share/perl5",
 		perl_source		=>	"/sbin/striker/AN",
+		pxelinux_boot		=>	"/var/lib/tftpboot/boot",
 		pxelinux_config		=>	"/var/lib/tftpboot/pxelinux.cfg",
-		pxelinux_boot		=>	"/var/lib/tftpboot/boot",	# TODO: Make this and _config subdirtories of 'pxelinux'
 		pxelinux		=>	"/var/lib/tftpboot/",
 		pxe_iso_subdirs		=>	["iso", "img", "ks", "files"],	# appended to {centos,rhel}_pxe_web + arch
 		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
@@ -407,6 +408,8 @@ my $conf = {
 		postgresql_conf		=>	"/var/lib/pgsql/9.5/data/postgresql.conf",
 		postgres_pgpass		=>	"/var/lib/pgsql/9.5/.pgpass",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
+		pxe_efi_source		=>	"/boot/efi/EFI/redhat/grub.efi",
+		pxe_efi_target		=>	"efi64/bootx64.efi",		# This gets appended to directory::pxelinux
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
 		rc_local		=>	"/etc/rc.local",
@@ -4556,7 +4559,7 @@ install
 text
 
 # This is the web server with the installation image.
-url --url=http://$conf->{network}{bcn}{ip}/$short_os_name/x86_64/img/
+url --url=http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/
 
 # Set the language and keyboard to en_US, UTF-8. Adjust as needed.
 lang en_US.UTF-8
@@ -4851,7 +4854,7 @@ LABEL generic-centos-anvil-node1
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{node1_ks}
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node1_ks}."
 ";
 		$i++;
 		$default_config .= "
@@ -4863,7 +4866,7 @@ LABEL generic-centos-anvil-node2
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{node2_ks}
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node2_ks}."
 ";
 	}
 	if ($conf->{pxe}{rhel}{enabled})
@@ -4878,7 +4881,7 @@ LABEL generic-rhel-anvil-node
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{node1_ks}
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node1_ks}."
 ";
 		$i++;
 		$default_config .= "
@@ -4890,7 +4893,7 @@ LABEL generic-rhel-anvil-node
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{node2_ks}
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node2_ks}."
 ";
 	}
 	if ($conf->{pxe}{centos}{enabled})
@@ -4905,7 +4908,7 @@ LABEL generic-centos-striker
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{striker1_ks}
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks}."
 ";
 		$i++;
 		$default_config .= "
@@ -4917,7 +4920,7 @@ LABEL generic-centos-striker
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{striker2_ks}
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks}."
 ";
 	}
 	if ($conf->{pxe}{rhel}{enabled})
@@ -4932,7 +4935,7 @@ LABEL generic-rhel-striker
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{striker1_ks}
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker1_ks}."
 ";
 		$i++;
 		$default_config .= "
@@ -4944,7 +4947,7 @@ LABEL generic-rhel-striker
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{striker2_ks}
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker2_ks}."
 ";
 	}
 	
@@ -4957,6 +4960,33 @@ LABEL generic-rhel-striker
 	# Copy the PXE menu background into place.
 	logger($conf, $THIS_FILE, __LINE__, "- Copying PXE server's wallpaper into place.", 1);
 	rsync_files($conf, $conf->{path}{pxe_background_source}, $conf->{directory}{pxelinux}."/");
+
+	# Setup UEFI PXE booting.
+	my $efi_source = $conf->{path}{pxe_efi_source};
+	my $efi_target = $conf->{directory}{pxelinux}."/".$conf->{path}{pxe_efi_target};
+	if (not -e $efi_target)
+	{
+		# Copy (and rename) the 
+		logger($conf, $THIS_FILE, __LINE__, "- Copying the UEFI PXE boot image.", 1);
+		if (not -e $efi_source)
+		{
+			# Can't copy what doesn't exist...
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The UEFI boot image: [".$efi_source."] doesn't exist, can't copy it to: [".$efi_target."].\n", 0);
+			exit(44);
+		}
+		copy_file($conf, $efi_source, $efi_target);
+		if (-e $efi_target)
+		{
+			# Success!
+			logger($conf, $THIS_FILE, __LINE__, "- Successfully copied the UEFI boot image: [".$efi_source."] to: [".$efi_target."].", 1);
+		}
+		else
+		{
+			# Something went wrong with the copy.
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to copy UEFI boot image: [".$efi_source."] to: [".$efi_target."]. The error might be shown above\n", 0);
+			exit(45);
+		}
+	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
