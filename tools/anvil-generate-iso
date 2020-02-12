@@ -2256,7 +2256,7 @@ sub download_striker
 		copy_file($conf, $source_bootx64_conf, $target_bootx64_conf, 1);
 		copy_file($conf, $source_background,   $target_background, 1);
 		
-		# Make sure the BOOTX64.efi file is set to 755.
+		# Make sure the BOOTX64.efi and vmlinuz files are set to 755.
 		chmod "0755", $target_bootx64_efi;
 	}
 	

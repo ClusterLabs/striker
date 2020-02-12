@@ -131,6 +131,7 @@ my $conf = {
 		pxelinux_boot		=>	"/var/lib/tftpboot/boot",
 		pxelinux_config		=>	"/var/lib/tftpboot/pxelinux.cfg",
 		pxelinux		=>	"/var/lib/tftpboot/",
+		pxelinux_efi		=>	"/var/lib/tftpboot/efi64",
 		pxe_iso_subdirs		=>	["iso", "img", "ks", "files"],	# appended to {centos,rhel}_pxe_web + arch
 		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
 		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
@@ -409,7 +410,7 @@ my $conf = {
 		postgres_pgpass		=>	"/var/lib/pgsql/9.5/.pgpass",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_efi_source		=>	"/boot/efi/EFI/redhat/grub.efi",
-		pxe_efi_target		=>	"efi64/bootx64.efi",		# This gets appended to directory::pxelinux
+		pxe_efi_target		=>	"bootx64.efi",		# This gets appended to directory::pxelinux_efi
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
 		rc_local		=>	"/etc/rc.local",
@@ -4963,9 +4964,12 @@ LABEL generic-rhel-striker
 
 	# Setup UEFI PXE booting.
 	my $efi_source = $conf->{path}{pxe_efi_source};
-	my $efi_target = $conf->{directory}{pxelinux}."/".$conf->{path}{pxe_efi_target};
+	my $efi_target = $conf->{directory}{pxelinux_efi}."/".$conf->{path}{pxe_efi_target};
 	if (not -e $efi_target)
 	{
+		logger($conf, $THIS_FILE, __LINE__, "- Creating EFI PXE Linux directory: [".$conf->{directory}{pxelinux_efi}."]", 1);
+		make_path($conf->{directory}{pxelinux_efi});
+		
 		# Copy (and rename) the 
 		logger($conf, $THIS_FILE, __LINE__, "- Copying the UEFI PXE boot image.", 1);
 		if (not -e $efi_source)
@@ -8763,6 +8767,10 @@ SWITCHES
 	If specified, and if an IPMI BMC is found, the installer will set the
 	IPMI BMC to have the specified IP address and network mask/subnet.
 	Optionally, if 'gw' is set, the BMC's gateway will also be set.
+
+--iso </path/to/anvil.iso>
+
+	
 
  --use-lsi
 
