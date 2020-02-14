@@ -61,14 +61,9 @@
 # 42 - Failed to enable or disable ScanCore.
 # 43 - User specified a host UUID, but it is invalid.
 # 44 - The UEFI boot file wasn't found
+# 45 - The --source mount is not valid
 # 
-# TODO: - Create an init script that deletes anything in the media directory on
-#         boot. Can't use /tmp as it is usually too small.
-#       - Configure avahi to announce newly build nodes and strikers and have
-#         striker listen for newly built nodes. 
-#         (broadcast 'I am $hostname on ip $ip' once per second, and then have
-#          striker stop this when it first starts to configure the node).
-#       - When installing without --rhel-iso or --centos-iso, look for existing
+# TODO: - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{centos6,rhel6} and, if so, setup kickstart/PXE.
 #         
 # BUG: 
@@ -95,11 +90,11 @@ my $conf = {
 		#       if 'acpid' was just installed.
 		enable			=>	[
 			"acpid", 
+			"gpm",
 			"haldaemon", 
 			"httpd", 
 			"iptables", 
 			"irqbalance", 
-			#"ksmtuned", 
 			"ktune", 
 			"network", 
 			"nfs", 
@@ -112,6 +107,7 @@ my $conf = {
 		disable			=>	[
 			"ip6tables", 
 			"ipmidetectd", 
+			"kdump",
 			"NetworkManager", 
 			"numad", 
 			"shorewall", 
@@ -217,6 +213,7 @@ my $conf = {
 			gcalctool			=>	0,
 			gcc				=>	0,
 			'gcc-c++'			=>	0,
+			'glibc-devel'			=>	0,
 			httpd				=>	0,
 			irqbalance			=>	0,
 			'kernel-devel'			=>	0,
@@ -411,7 +408,8 @@ my $conf = {
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_efi_source		=>	"/boot/efi/EFI/redhat/grub.efi",
 		pxe_efi_target		=>	"bootx64.efi",		# This gets appended to directory::pxelinux_efi
-		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
+		#pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
+		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/splash.jpg",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
 		rc_local		=>	"/etc/rc.local",
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
@@ -693,6 +691,7 @@ my $conf = {
 		rhn			=>	"", # <user:password>
 		'router-mode'		=>	0,
 		'run-rc-local'		=>	"",
+		source			=>	"",
 		'u'			=>	"", # <user:password>
 		'y'			=>	"",
 	},
@@ -748,6 +747,7 @@ my $conf = {
 		yum_switches		=>	"-y",		# Adds: [--disablerepo='*' --enablerepo='striker*'] if no internet connection found.
 	},
 	url		=>	{
+		an_repo		=>	"https://www.alteeve.com/an-repo/el6/alteeve-repo-latest.noarch.rpm",
 		git_master	=>	"https://github.com/ClusterLabs/striker/archive/master.zip",
 		striker		=>	"https://github.com/ClusterLabs/striker/archive/#!striker_version!#.zip",
 		latest_release	=>	"https://alteeve.com/striker_latest.txt",
@@ -774,18 +774,18 @@ my $conf = {
 	pxe		=>	{
 		centos		=>	{
 			enabled		=>	0,
-			node1_ks	=>	"anvil-m2-node01_centos.ks",
-			node2_ks	=>	"anvil-m2-node02_centos.ks",
-			striker1_ks	=>	"anvil-m2-striker01_centos.ks",
-			striker2_ks	=>	"anvil-m2-striker02_centos.ks",
+			node1_ks	=>	"pxe-new-node01.ks",
+			node2_ks	=>	"pxe-new-node02.ks",
+			striker1_ks	=>	"pxe-new-striker01.ks",
+			striker2_ks	=>	"pxe-new-striker02.ks",
 			short_name	=>	"centos6",
 		},
 		rhel		=>	{
 			enabled		=>	0,
-			node1_ks	=>	"anvil-m2-node01_rhel.ks",
-			node2_ks	=>	"anvil-m2-node02_rhel.ks",
-			striker1_ks	=>	"anvil-m2-striker01_rhel.ks",
-			striker2_ks	=>	"anvil-m2-striker02_rhel.ks",
+			node1_ks	=>	"pxe-new-node01.ks",
+			node2_ks	=>	"pxe-new-node02.ks",
+			striker1_ks	=>	"pxe-new-striker01.ks",
+			striker2_ks	=>	"pxe-new-striker02.ks",
 			short_name	=>	"rhel6",
 		}
 	},
@@ -864,6 +864,7 @@ else
 {
 	# Add our repo to the list of RPMs to install.
 	$conf->{packages}{to_install}{'alteeve-repo'} = 0;
+	add_an_repo($conf);
 }
 
 # Add the user's repo if specified
@@ -910,9 +911,6 @@ if ($conf->{switches}{ntp})
 	configure_ntp($conf);
 }
 
-# TODO: See if we can set contexts on files when selinux is disabled entirely.
-#       If not, and if relabeling is needed, write a run-once script to relabel
-#       our stuff on the next boot.
 # Now configure the Striker dashboard.
 setup_striker($conf);
 
@@ -999,6 +997,44 @@ exit(0);
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# This adds the an-repo, if needed.
+sub add_an_repo
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Adding the AN! software repository.", 1);
+	if (-e $conf->{path}{an_repo})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
+	}
+	else
+	{
+		my $shell_call = $conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." install ".$conf->{url}{an_repo};
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			print $_;
+		}
+		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+		close $file_handle;
+		
+		if (-e $conf->{path}{an_repo})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Successfully installed!", 1);
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- [ Warning ] - Failed to install the repo! Is there a working internet connection?", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- [ Warning ] - Can you access: [".$conf->{url}{an_repo}."]?", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- [ Warning ] - Install will continue, but it might fail if all packages aren't already available locally", 1);
+		}
+	}
+	
+	return(0);
+}
 
 # Check for and compile/install network drivers
 sub compile_network_drivers
@@ -2135,13 +2171,24 @@ sub configure_striker_tools
 		mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_tools}."]. The error was: $!\n";
 	}
 	
+	my $source = $conf->{directory}{source}; 
+	if (not -e $source."/striker.conf")
+	{
+		$source = $conf->{directory}{source}."/striker";
+		if (not -e $source."/striker.conf")
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to find the source striker.conf in either: [".$conf->{directory}{source}."/striker.conf] or: [".$source."/striker/striker.conf].\n", 0);
+			exit(30);
+		}
+	}
+	
 	# Now copy the tools we want into place, if they're not already there.
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker tools and ScanCore into place.", 1);
-	rsync_files($conf, $conf->{directory}{source}."/striker.conf", $conf->{directory}{striker_tools}."/");
-	rsync_files($conf, $conf->{directory}{source}."/tools/*",      $conf->{directory}{striker_tools}."/");
-	rsync_files($conf, $conf->{directory}{source}."/ScanCore",     $conf->{directory}{striker_tools}."/");
-	rsync_files($conf, $conf->{directory}{source}."/AN",           $conf->{directory}{striker_tools}."/");
-	rsync_files($conf, $conf->{directory}{source}."/cgi-bin/Data", $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $source."/striker.conf", $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $source."/tools/*",      $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $source."/ScanCore",     $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $source."/AN",           $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $source."/cgi-bin/Data", $conf->{directory}{striker_tools}."/");
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# Create a tarball for downloading by nodes.
@@ -2163,7 +2210,7 @@ sub configure_striker_tools
 	close $file_handle;
 	
 	# Copy the tools into /var/www/html/files/ so that InstallManifest can grab what it needs, as needed.
-	rsync_files($conf, $conf->{directory}{source}."/tools/*", $conf->{directory}{apache_files}."/");
+	rsync_files($conf, $source."/tools/*", $conf->{directory}{apache_files}."/");
 	
 	# Setup the USB tools.
 	write_udev_striker_usb($conf);
@@ -2565,6 +2612,222 @@ sub add_repo
 	return(0);
 }
 
+# This basically handles all of the stuff normally handled by the kickstart script when doing stage-1 that 
+# may not have happened.
+sub do_pre_setup
+{
+	my ($conf) = @_;
+	
+	my $source    = $conf->{switches}{source};
+	my $test_file = $source."/striker/anvil.version";
+	
+	# Make sure we're looking at an actual 
+	if (not -e $test_file)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The --source: [".$source."] does not appear to be a valid mount point for the Anvil! ISO.", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   The test file: [".$test_file."] wasn't found.", 0);
+		exit(45);
+	}
+	$conf->{directory}{source} = $source;
+	
+	logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Performing steps usually handle by Anvil!'s kickstart to prepare for striker install.", 1);
+	my $striker_number = 1;
+	if (($conf->{switches}{n}) && (($conf->{switches}{n} =~ /striker0(\d)/) or ($conf->{switches}{n} =~ /dashboard(\d)/)))
+	{
+		$striker_number = $1;
+		logger($conf, $THIS_FILE, __LINE__, "striker_number: [$striker_number]", 3);
+	}
+	
+	my $os_dir = $conf->{pxe}{centos}{short_name};
+	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 2);
+	if ($conf->{sys}{is_rhel})
+	{
+		$os_dir                     = $conf->{pxe}{rhel}{short_name};
+		$conf->{pxe}{rhel}{enabled} = 1;
+	}
+	else
+	{
+		$conf->{pxe}{centos}{enabled} = 1;
+	}
+	logger($conf, $THIS_FILE, __LINE__, "os_dir: [$os_dir]", 3);
+	
+	logger($conf, $THIS_FILE, __LINE__, "Creating the apache docroot and PXE directories.", 0);
+	make_path("/var/www/html/".$os_dir."/x86_64/img", 
+	          "/var/www/html/".$os_dir."/x86_64/iso", 
+	          "/var/www/html/".$os_dir."/x86_64/ks", 
+	          "/var/www/html/".$os_dir."/x86_64/files",
+	          "/var/lib/tftpboot/boot/".$os_dir."/x86_64/", 
+	          "/var/lib/tftpboot/pxelinux.cfg",
+	          "/sbin/striker",
+	          "/var/lib/tftpboot/efi64/");
+	
+	# Copy the source ISO to the iso directory.
+	my $source_iso = "";
+	my $shell_call = $conf->{executable}{mount};
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 3);
+		if ($line =~ /^(\/.*?) on $source/)
+		{
+			$source_iso = $1;
+			logger($conf, $THIS_FILE, __LINE__, "source_iso: [$source_iso]", 2);
+			last;
+		}
+	}
+	close $file_handle;
+	if (not $source_iso)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to find where: [".$source."] is mounted.", 0);
+		exit(45);
+	}
+
+	my $iso_target_directory = "/var/www/html/".$os_dir."/x86_64/iso/";
+	logger($conf, $THIS_FILE, __LINE__, "The source ISO is: [".$source_iso."], copying to the web-accessible directory: [".$iso_target_directory."]", 0);
+	copy_file($conf, $source_iso, $iso_target_directory);
+	
+	logger($conf, $THIS_FILE, __LINE__, "Setting up 'list-ips'.", 0);
+	my $list_ips_source = $source."/striker/tools/list-ips";
+	my $list_ips_target = "/sbin/striker/list-ips";
+	copy_file($conf, $source_iso, $iso_target_directory);
+	chown 0, 0, $list_ips_target;
+	chmod 0755, $list_ips_target;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying fence_raritan_snmp into /usr/sbin/", 0);
+	copy_file($conf, $source."/Tools/fence/fence_raritan_snmp", "/usr/sbin/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying the KS scripts into place", 0);
+	copy_file($conf, $source."/ks/pxe-new-node01_from-striker0".$striker_number.".ks", "/var/www/html/".$os_dir."/x86_64/ks/pxe-new-node01.ks");
+	copy_file($conf, $source."/ks/pxe-new-node02_from-striker0".$striker_number.".ks", "/var/www/html/".$os_dir."/x86_64/ks/pxe-new-node02.ks");
+	copy_file($conf, $source."/ks/pxe-new-striker01.ks", "/var/www/html/".$os_dir."/x86_64/ks/");
+	copy_file($conf, $source."/ks/pxe-new-striker02.ks", "/var/www/html/".$os_dir."/x86_64/ks/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Setting the PXE wallpaper.", 0);
+	copy_file($conf, $source."/syslinux/splash.jpg", "/var/lib/tftpboot/");
+
+	logger($conf, $THIS_FILE, __LINE__, "Copying the Striker installer and source code into place.", 0);
+	copy_file($conf, $source."/syslinux/splash.jpg", "/var/lib/tftpboot/");
+	copy_file($conf, $source."/EFI/BOOT/pxe_voyager1.xpm.gz", "/var/lib/tftpboot/efi64/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying Striker to /root/ for the rest of the install to run.", 0);
+	rsync_files($conf, $source."/striker", "/root/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying 'Tools' into '/var/www/html/".$os_dir."/x86_64/files/'.", 0);
+	rsync_files($conf, $source."/Tools", "/var/www/html/".$os_dir."/x86_64/files/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying the ISO source to apache.", 0);
+	rsync_files($conf, $source."/*", "/var/www/html/".$os_dir."/x86_64/img/");
+	rsync_files($conf, $source."/.discinfo", "/var/www/html/".$os_dir."/x86_64/img/");
+	rsync_files($conf, $source."/.treeinfo", "/var/www/html/".$os_dir."/x86_64/img/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying Striker program and HTML files into place.", 0);
+	rsync_files($conf, $source."/striker/cgi-bin/*", "/var/www/cgi-bin/");
+	rsync_files($conf, $source."/striker/html/*", "/var/www/html/");
+	rsync_files($conf, $source."/striker/tools/*", "/sbin/striker/");
+	rsync_files($conf, $source."/striker/ScanCore", "/sbin/striker/");
+	rsync_files($conf, $source."/striker/AN", "/usr/share/perl5/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Copying ISO Linux and EFI boot files.", 0);
+	rsync_files($conf, $source."/isolinux/*", "/var/lib/tftpboot/boot/".$os_dir."/x86_64/");
+	rsync_files($conf, $source."/EFI/*", "/var/lib/tftpboot/boot/".$os_dir."/x86_64/");
+	
+	logger($conf, $THIS_FILE, __LINE__, "Configuring yum to keep its cache.", 0);
+	$shell_call = $conf->{executable}{sed}." -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Configuring sshd to not use DNS or GSSAPI authentication for fast logins without internet connections.", 0);
+	$shell_call = $conf->{executable}{sed}." -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	$shell_call = $conf->{executable}{sed}." -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_config";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	$shell_call = $conf->{executable}{sed}." -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Setting plymouth to use detailed boot screen", 0);
+	$shell_call = "plymouth-set-default-theme details --rebuild-initrd";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	$shell_call = $conf->{executable}{sed}." -i 's/ rhgb//' /boot/grub/grub.conf";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	$shell_call = $conf->{executable}{sed}." -i 's/ quiet//' /boot/grub/grub.conf";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Writing out local yum repository config.", 0);
+	
+	my $yum_config = "[striker01-".$os_dir."]
+name=Striker 0".$striker_number." ".$os_dir." repository
+baseurl=http://localhost/".$os_dir."/x86_64/img/
+enabled=1
+gpgcheck=0
+priority=1
+";
+	logger($conf, $THIS_FILE, __LINE__, "- Writing the local yum.conf.d repository.", 1);
+	$shell_call = "/etc/yum.repos.d/striker0".$striker_number.".repo";
+	open ($file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+	print $file_handle $yum_config;
+	close $file_handle;
+	
+	return(0);
+}
+
 # This handles the rest of the install (everything except the network).
 sub setup_striker
 {
@@ -2577,6 +2840,13 @@ sub setup_striker
 	
 	# If requested, this will install and configure the GUI.
 	configure_gui($conf);
+	
+	# When installing on a minimal install, the user will use '--source' to point to the mounted Anvil! 
+	# ISO.
+	if ($conf->{switches}{source})
+	{
+		do_pre_setup($conf);
+	}
 	
 	### NOTE: No longer supported. The source will be in place thanks to the kickstart file that built 
 	###       this dashboard.
@@ -4769,13 +5039,13 @@ sub configure_pxe_config
 	my ($conf) = @_;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Configuring PXE server configuration files.", 1);
-	if (-e $conf->{path}{pxe_default_config})
-	{
-		# Exit, don't overwrite existing configs.
-		logger($conf, $THIS_FILE, __LINE__, "- PXE configurtion file already exists, skipping.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
-		return(0);
-	}
+# 	if (-e $conf->{path}{pxe_default_config})
+# 	{
+# 		# Exit, don't overwrite existing configs.
+# 		logger($conf, $THIS_FILE, __LINE__, "- PXE configurtion file already exists, skipping.", 1);
+# 		logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+# 		return(0);
+# 	}
 	
 	my $pxe_background = ($conf->{path}{pxe_background_source} =~ /^.*\/(.*)$/)[0];
 	my $default_config = "
@@ -4832,9 +5102,6 @@ MENU COLOR pwdentry    0  #80ffffff #20ffffff std      # Password entry field
 MENU COLOR help        0  #c0ffffff #00000000 std      # Help text, if set via 'TEXT HELP ... ENDTEXT'
  
 ### Now define the menu options
- 
-# I feel it is safest to return booting to the client as the first and default
-# option. This entry below will do just that.
 LABEL next
 	MENU LABEL ^1) Boot the next device as configured in your BIOS
 	MENU DEFAULT
@@ -4848,26 +5115,44 @@ LABEL next
 		$i++;
 		$default_config .= "
 LABEL generic-centos-anvil-node1
-        MENU LABEL ^$i) Anvil! m2 Node 01 - CentOS 6
+        MENU LABEL ^$i) Anvil! m2, Node 01 - CentOS 6
 	TEXT HELP
-		Installs a generic Anvil! m2 node 01 using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
-	ENDTEXT
+        
+                .------------------------------------------------------------------.
+                | WARNING: This install will appear to stall at first! BE PATIENT! |
+                ^------------------------------------------------------------------^
+
+                    To prevent traces of previous installs interrupting the
+                    Install Manifest run, this boot option starts by 'zeroing
+                    out' the first 100 GiB of the drive. There is no output
+                    while this runs.
+
+                Installs a new Anvil! Node 01 using CentOS 6.
+        ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node1_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node1_ks}." ksdevice=bootif
 ";
 		$i++;
 		$default_config .= "
 LABEL generic-centos-anvil-node2
         MENU LABEL ^$i) Anvil! m2, Node 02 - CentOS 6
 	TEXT HELP
-		Installs a generic Anvil! m2 node 02 using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
+        
+                .------------------------------------------------------------------.
+                | WARNING: This install will appear to stall at first! BE PATIENT! |
+                ^------------------------------------------------------------------^
+
+                    To prevent traces of previous installs interrupting the
+                    Install Manifest run, this boot option starts by 'zeroing
+                    out' the first 100 GiB of the drive. There is no output
+                    while this runs.
+
+                Installs a new Anvil! Node 02 using CentOS 6.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node2_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node2_ks}." ksdevice=bootif
 ";
 	}
 	if ($conf->{pxe}{rhel}{enabled})
@@ -4877,24 +5162,42 @@ LABEL generic-centos-anvil-node2
 LABEL generic-rhel-anvil-node
         MENU LABEL ^$i) Anvil! m2, Node 01 - RHEL 6
 	TEXT HELP
-		Installs a generic Anvil! m2 node 01 using RHEL 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
+        
+                .------------------------------------------------------------------.
+                | WARNING: This install will appear to stall at first! BE PATIENT! |
+                ^------------------------------------------------------------------^
+
+                    To prevent traces of previous installs interrupting the
+                    Install Manifest run, this boot option starts by 'zeroing
+                    out' the first 100 GiB of the drive. There is no output
+                    while this runs.
+
+                Installs a new Anvil! Node 01 using RHEL 6.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node1_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node1_ks}." ksdevice=bootif
 ";
 		$i++;
 		$default_config .= "
 LABEL generic-rhel-anvil-node
         MENU LABEL ^$i) Anvil! m2, Node 02 - RHEL 6
 	TEXT HELP
-		Installs a generic Anvil! m2 node 02 using RHEL 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
+        
+                .------------------------------------------------------------------.
+                | WARNING: This install will appear to stall at first! BE PATIENT! |
+                ^------------------------------------------------------------------^
+
+                    To prevent traces of previous installs interrupting the
+                    Install Manifest run, this boot option starts by 'zeroing
+                    out' the first 100 GiB of the drive. There is no output
+                    while this runs.
+
+                Installs a new Anvil! Node 02 using RHEL 6.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node2_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node2_ks}." ksdevice=bootif
 ";
 	}
 	if ($conf->{pxe}{centos}{enabled})
@@ -4904,24 +5207,22 @@ LABEL generic-rhel-anvil-node
 LABEL generic-centos-striker
         MENU LABEL ^$i) Striker 01 Dashboard - CentOS 6
 	TEXT HELP
-		Installs a generic Striker 01 dashboard using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
+		Installs a new Striker 01 using CentOS 6.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks}." ksdevice=bootif
 ";
 		$i++;
 		$default_config .= "
 LABEL generic-centos-striker
         MENU LABEL ^$i) Striker 02 Dashboard - CentOS 6
 	TEXT HELP
-		Installs a generic Striker 02 dashboard using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
+		Installs a new Striker 02 using CentOS 6.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks}." ksdevice=bootif
 ";
 	}
 	if ($conf->{pxe}{rhel}{enabled})
@@ -4931,24 +5232,22 @@ LABEL generic-centos-striker
 LABEL generic-rhel-striker
         MENU LABEL ^$i) Striker 01 Dashboard - RHEL 6
 	TEXT HELP
-		Installs a generic Striker 01 dashboard using RHEL 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
+		Installs a new Striker 01 using RHEL 6.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker1_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker1_ks}." ksdevice=bootif
 ";
 		$i++;
 		$default_config .= "
 LABEL generic-rhel-striker
         MENU LABEL ^$i) Striker 02 Dashboard - RHEL 6
 	TEXT HELP
-		Installs a generic Striker 02 dashboard using RHEL 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
+		Installs a new Striker 02 using RHEL 6.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker2_ks}."
+        IPAPPEND 2
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker2_ks}." ksdevice=bootif
 ";
 	}
 	
@@ -5520,6 +5819,18 @@ sub install_striker_files
 			logger($conf, $THIS_FILE, __LINE__, "- Copying base Striker configuration file.", 1);
 			my $source      = $conf->{directory}{source}."/$striker_config_file";
 			my $destination = "$striker_config_directory/";
+			
+			# If we're installing from a minimal install, striker.conf may be under a different directory.
+			if (not -e $source)
+			{
+				$source = $conf->{directory}{source}."/striker/$striker_config_file";
+				if (not -e $source)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to find the source striker.conf in either: [".$conf->{directory}{source}."/$striker_config_file] or: [".$conf->{directory}{source}."/striker/$striker_config_file].\n", 0);
+					exit(30);
+				}
+			}
+			
 			logger($conf, $THIS_FILE, __LINE__, "- Copying: [$source]", 1);
 			logger($conf, $THIS_FILE, __LINE__, "       to: [$destination]", 1);
 			copy_file($conf, $source, $destination);
@@ -6141,7 +6452,6 @@ sub configure_selinux
 {
 	my ($conf) = @_;
 	
-	### TODO: Get the media library stuff working... ;_;
 	logger($conf, $THIS_FILE, __LINE__, "Making sure that selinux is enabled.", 3);
 	logger($conf, $THIS_FILE, __LINE__, "Making sure that selinux is permissive.", 1);
 	if (-e $conf->{path}{backups}."/config")
@@ -6210,8 +6520,6 @@ sub configure_selinux
 	print $file_handle $selinux_config;
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
-	
-	# TODO: Set labels here.
 	
 	return(0);
 }
@@ -7986,12 +8294,9 @@ sub sanity_check_switches
 	if (not $conf->{switches}{c})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- No customer/owner name given, will use: [".$conf->{sys}{customer}."]", 1);
-		# TODO: check to see if apache limits the names allowed.
 	}
 	else
 	{
-		# TODO: Does this need to be sanitized to prevent injection of
-		#       malicious code? If so, how? Escape all quotes?
 		$conf->{sys}{customer} = $conf->{switches}{c};
 	}
 	
@@ -8768,10 +9073,6 @@ SWITCHES
 	IPMI BMC to have the specified IP address and network mask/subnet.
 	Optionally, if 'gw' is set, the BMC's gateway will also be set.
 
---iso </path/to/anvil.iso>
-
-	
-
  --use-lsi
 
 	If your dashboard machine uses an LSI-brand storage controller, and if
@@ -8869,6 +9170,13 @@ SWITCHES
 	be clobbered by the GUI install. Using this switch causes the installer
 	to call 'sh /etc/rc.local' just prior to the end of the install 
 	process.
+
+ --source /mnt/<anvil.iso mount point>
+
+	This points to where the Anvil! install ISO is mounted.
+	
+	NOTE: This is required when running on a normal minimal install of
+	      CentOS / RHEL. 
 
  -u <user:password>
 
