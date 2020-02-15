@@ -411,6 +411,7 @@ my $conf = {
 		#pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/splash.jpg",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
+		uefi_default_config	=>	"/var/lib/tftpboot/efi64/efidefault",
 		rc_local		=>	"/etc/rc.local",
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 		selinux_config		=>	"/etc/selinux/config",
@@ -2733,6 +2734,7 @@ sub do_pre_setup
 	logger($conf, $THIS_FILE, __LINE__, "Copying ISO Linux and EFI boot files.", 0);
 	rsync_files($conf, $source."/isolinux/*", "/var/lib/tftpboot/boot/".$os_dir."/x86_64/");
 	rsync_files($conf, $source."/EFI/*", "/var/lib/tftpboot/boot/".$os_dir."/x86_64/");
+	rsync_files($conf, $source."/images/pxeboot/*", "/var/lib/tftpboot/efi64/");
 	
 	logger($conf, $THIS_FILE, __LINE__, "Configuring yum to keep its cache.", 0);
 	$shell_call = $conf->{executable}{sed}." -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf";
@@ -2811,7 +2813,6 @@ sub do_pre_setup
 	close $file_handle;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Writing out local yum repository config.", 0);
-	
 	my $yum_config = "[striker01-".$os_dir."]
 name=Striker 0".$striker_number." ".$os_dir." repository
 baseurl=http://localhost/".$os_dir."/x86_64/img/
@@ -4302,70 +4303,6 @@ sub configure_iso_source
 			}
 			rsync_files($conf, "$isolinux_source", "$isolinux_target");
 			$conf->{pxe}{centos}{enabled} = 1;
-			
-			# Write out the kickstart files.
-			my $centos_node1_ks         = generate_kickstart($conf, "centos", "node", 1);
-			my $centos_node2_ks         = generate_kickstart($conf, "centos", "node", 2);
-			my $centos_striker1_ks      = generate_kickstart($conf, "centos", "striker", 1);
-			my $centos_striker2_ks      = generate_kickstart($conf, "centos", "striker", 2);
-			my $centos_node1_ks_file    = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{node1_ks};
-			my $centos_node2_ks_file    = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{node2_ks};
-			my $centos_striker1_ks_file = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks};
-			my $centos_striker2_ks_file = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks};
-			
-			# Write out the files.
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out CentOS node 01 kickstart file.", 1);
-			if (-e $centos_node1_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $centos_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node1_ks_file], the error was: $!\n";
-				print $file_handle $centos_node1_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$centos_node1_ks_file].", 1);
-			}
-			
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out CentOS node 02 kickstart file.", 1);
-			if (-e $centos_node2_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $centos_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node2_ks_file], the error was: $!\n";
-				print $file_handle $centos_node2_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$centos_node2_ks_file].", 1);
-			}
-
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out CentOS striker 01 kickstart file.", 1);
-			if (-e $centos_striker1_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $centos_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
-				print $file_handle $centos_striker1_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$centos_striker1_ks_file].", 1);
-			}
-
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out CentOS striker 02 kickstart file.", 1);
-			if (-e $centos_striker2_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $centos_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
-				print $file_handle $centos_striker2_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$centos_striker2_ks_file].", 1);
-				logger($conf, $THIS_FILE, __LINE__, "- CentOS PXE configuration complete.", 1);
-			}
 		}
 	}
 
@@ -4496,72 +4433,47 @@ sub configure_iso_source
 			}
 			rsync_files($conf, "$isolinux_source", "$isolinux_target");
 			$conf->{pxe}{rhel}{enabled} = 1;
-			
-			# Write out the kickstart files.
-			my $rhel_node1_ks         = generate_kickstart($conf, "rhel", "node", 1);
-			my $rhel_node2_ks         = generate_kickstart($conf, "rhel", "node", 2);
-			my $rhel_striker1_ks      = generate_kickstart($conf, "rhel", "striker", 1);
-			my $rhel_striker2_ks      = generate_kickstart($conf, "rhel", "striker", 2);
-			my $rhel_node1_ks_file    = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{node1_ks};
-			my $rhel_node2_ks_file    = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{node2_ks};
-			my $rhel_striker1_ks_file = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{striker1_ks};
-			my $rhel_striker2_ks_file = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{striker2_ks};
-			
-			# Write out the files.
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out RHEL node 01 kickstart file.", 1);
-			if (-e $rhel_node1_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $rhel_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
-				print $file_handle $rhel_node1_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$rhel_node1_ks_file].", 1);
-			}
-			
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out RHEL node 02 kickstart file.", 1);
-			if (-e $rhel_node2_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $rhel_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
-				print $file_handle $rhel_node2_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$rhel_node2_ks_file].", 1);
-			}
-
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out RHEL striker 01 kickstart file.", 1);
-			if (-e $rhel_striker1_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $rhel_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
-				print $file_handle $rhel_striker1_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$rhel_striker1_ks_file].", 1);
-			}
-
-			logger($conf, $THIS_FILE, __LINE__, "- Writing out RHEL striker 02 kickstart file.", 1);
-			if (-e $rhel_striker2_ks_file)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Already exists, skipping.", 1);
-			}
-			else
-			{
-				open (my $file_handle, ">", $rhel_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
-				print $file_handle $rhel_striker2_ks;
-				close $file_handle;
-				logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$rhel_striker2_ks_file].", 1);
-			}
-			logger($conf, $THIS_FILE, __LINE__, "- RHEL PXE configuration complete.", 1);
 		}
 	}
+	
+	# Write out the kickstart files.
+	my $say_os = $conf->{pxe}{rhel}{enabled} ? "rhel" : "centos";
+	
+	my $node1_ks         = generate_kickstart($conf, $say_os, "node", 1);
+	my $node2_ks         = generate_kickstart($conf, $say_os, "node", 2);
+	my $striker1_ks      = generate_kickstart($conf, $say_os, "striker", 1);
+	my $striker2_ks      = generate_kickstart($conf, $say_os, "striker", 2);
+	my $node1_ks_file    = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{node1_ks};
+	my $node2_ks_file    = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{node2_ks};
+	my $striker1_ks_file = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{striker1_ks};
+	my $striker2_ks_file = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{striker2_ks};
+	
+	# Write out the files.
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." node 01 kickstart file.", 1);
+	open (my $file_handle, ">", $node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$node1_ks_file], the error was: $!\n";
+	print $file_handle $node1_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$node1_ks_file].", 1);
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." node 02 kickstart file.", 1);
+	open ($file_handle, ">", $node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$node2_ks_file], the error was: $!\n";
+	print $file_handle $node2_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$node2_ks_file].", 1);
+
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." striker 01 kickstart file.", 1);
+	open ($file_handle, ">", $striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$striker1_ks_file], the error was: $!\n";
+	print $file_handle $striker1_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$striker1_ks_file].", 1);
+
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." striker 02 kickstart file.", 1);
+	open ($file_handle, ">", $striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$striker2_ks_file], the error was: $!\n";
+	print $file_handle $striker2_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$striker2_ks_file].", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- ".$say_os." PXE configuration complete.", 1);
+	
 	logger($conf, $THIS_FILE, __LINE__, "Done!\n", 1);
 
 	return(0);
@@ -5039,17 +4951,69 @@ sub configure_pxe_config
 	my ($conf) = @_;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Configuring PXE server configuration files.", 1);
-# 	if (-e $conf->{path}{pxe_default_config})
-# 	{
-# 		# Exit, don't overwrite existing configs.
-# 		logger($conf, $THIS_FILE, __LINE__, "- PXE configurtion file already exists, skipping.", 1);
-# 		logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
-# 		return(0);
-# 	}
 	
+	my $say_os   = "CentOS";
+	my $os_short = $conf->{pxe}{centos}{short_name};
+	if ($conf->{pxe}{rhel}{enabled})
+	{
+		$os_short = $conf->{pxe}{rhel}{short_name};
+		$say_os   = "RHEL";
+	}
 	my $pxe_background = ($conf->{path}{pxe_background_source} =~ /^.*\/(.*)$/)[0];
-	my $default_config = "
-# Use the high-colour menu system.
+	my $uefi_config    = "timeout 30
+default 0
+splashimage (nd)/pxe_voyager1.xpm.gz
+
+title Boot the next device as configured in your BIOS
+	exit
+
+# Install Node 01 via net
+title New Anvil! Node 1 - ".$say_os." v6 - PXE - Deletes All Existing Data!
+	root (nd)
+	macappend
+	kernel /vmlinuz ip=dhcp ks=http://".$conf->{network}{bcn}{ip}."/".$os_short."/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
+	initrd /initrd.img
+
+# Install Node 02 via net
+title New Anvil! Node 2 - ".$say_os." v6 - PXE - Deletes All Existing Data!
+	root (nd)
+	macappend
+	kernel /vmlinuz ip=dhcp ks=http://".$conf->{network}{bcn}{ip}."/".$os_short."/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
+	initrd /initrd.img
+
+# Install Striker 1 via net
+title New Striker Dashboard 01 - ".$say_os." v6 - Network Installation - Deletes All Existing Data!
+        root (nd)
+	macappend
+        kernel /vmlinuz ip=dhcp ks=http://".$conf->{network}{bcn}{ip}."/".$os_short."/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif 
+        initrd /initrd.img
+
+# Install Striker 2 via net
+title New Striker Dashboard 02 - ".$say_os." v6 - Network Installation - Deletes All Existing Data!
+	root (nd)
+	macappend
+	kernel /vmlinuz ip=dhcp ks=http://".$conf->{network}{bcn}{ip}."/".$os_short."/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
+	initrd /initrd.img
+
+# Rescue Installed System
+Title Rescue installed system
+	root (nd)
+	kernel /vmlinuz rescue
+	initrd /initrd.img
+
+# Memory Test
+Title Memory test
+	memtest
+";
+	
+	# Write out the new one.
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out dhcp daemon PXE UEFI configuration file.", 1);
+	open (my $file_handle, ">", $conf->{path}{uefi_default_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{uefi_default_config}."], the error was: $!\n";
+	print $file_handle $uefi_config;
+	close $file_handle;
+
+	# Now traditional BIOS
+	my $default_config = "# Use the high-colour menu system.
 UI vesamenu.c32
  
 # Time out and use the default menu option. Defined as tenths of a second.
@@ -5106,16 +5070,9 @@ LABEL next
 	MENU LABEL ^1) Boot the next device as configured in your BIOS
 	MENU DEFAULT
 	localboot -1
-";
-	my $centos_short = $conf->{pxe}{centos}{short_name};
-	my $rhel_short   = $conf->{pxe}{rhel}{short_name};
-	my $i = 1;
-	if ($conf->{pxe}{centos}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-centos-anvil-node1
-        MENU LABEL ^$i) Anvil! m2, Node 01 - CentOS 6
+
+LABEL node1
+        MENU LABEL ^1) Anvil! m2, Node 01 - ".$say_os." 6
 	TEXT HELP
         
                 .------------------------------------------------------------------.
@@ -5126,17 +5083,13 @@ LABEL generic-centos-anvil-node1
                     Install Manifest run, this boot option starts by 'zeroing
                     out' the first 100 GiB of the drive. There is no output
                     while this runs.
-
-                Installs a new Anvil! Node 01 using CentOS 6.
         ENDTEXT
-        KERNEL boot/$centos_short/x86_64/vmlinuz
+        KERNEL boot/$os_short/x86_64/vmlinuz
         IPAPPEND 2
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node1_ks}." ksdevice=bootif
-";
-		$i++;
-		$default_config .= "
-LABEL generic-centos-anvil-node2
-        MENU LABEL ^$i) Anvil! m2, Node 02 - CentOS 6
+        APPEND initrd=boot/$os_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/ks/".$conf->{pxe}{centos}{node1_ks}." ksdevice=bootif
+
+LABEL node2
+        MENU LABEL ^2) Anvil! m2, Node 02 - ".$say_os." 6
 	TEXT HELP
         
                 .------------------------------------------------------------------.
@@ -5148,112 +5101,33 @@ LABEL generic-centos-anvil-node2
                     out' the first 100 GiB of the drive. There is no output
                     while this runs.
 
-                Installs a new Anvil! Node 02 using CentOS 6.
 	ENDTEXT
-        KERNEL boot/$centos_short/x86_64/vmlinuz
+        KERNEL boot/$os_short/x86_64/vmlinuz
         IPAPPEND 2
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{node2_ks}." ksdevice=bootif
-";
-	}
-	if ($conf->{pxe}{rhel}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-rhel-anvil-node
-        MENU LABEL ^$i) Anvil! m2, Node 01 - RHEL 6
+        APPEND initrd=boot/$os_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/ks/".$conf->{pxe}{centos}{node2_ks}." ksdevice=bootif
+
+LABEL striker1
+        MENU LABEL ^3) Striker 01 Dashboard - ".$say_os." 6
 	TEXT HELP
-        
-                .------------------------------------------------------------------.
-                | WARNING: This install will appear to stall at first! BE PATIENT! |
-                ^------------------------------------------------------------------^
-
-                    To prevent traces of previous installs interrupting the
-                    Install Manifest run, this boot option starts by 'zeroing
-                    out' the first 100 GiB of the drive. There is no output
-                    while this runs.
-
-                Installs a new Anvil! Node 01 using RHEL 6.
+		Installs a new Striker 01 using ".$say_os." 6.
 	ENDTEXT
-        KERNEL boot/$rhel_short/x86_64/vmlinuz
+        KERNEL boot/$os_short/x86_64/vmlinuz
         IPAPPEND 2
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node1_ks}." ksdevice=bootif
-";
-		$i++;
-		$default_config .= "
-LABEL generic-rhel-anvil-node
-        MENU LABEL ^$i) Anvil! m2, Node 02 - RHEL 6
-	TEXT HELP
-        
-                .------------------------------------------------------------------.
-                | WARNING: This install will appear to stall at first! BE PATIENT! |
-                ^------------------------------------------------------------------^
+        APPEND initrd=boot/$os_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks}." ksdevice=bootif
 
-                    To prevent traces of previous installs interrupting the
-                    Install Manifest run, this boot option starts by 'zeroing
-                    out' the first 100 GiB of the drive. There is no output
-                    while this runs.
-
-                Installs a new Anvil! Node 02 using RHEL 6.
-	ENDTEXT
-        KERNEL boot/$rhel_short/x86_64/vmlinuz
-        IPAPPEND 2
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{node2_ks}." ksdevice=bootif
-";
-	}
-	if ($conf->{pxe}{centos}{enabled})
-	{
-		$i++;
-		$default_config .= "
 LABEL generic-centos-striker
-        MENU LABEL ^$i) Striker 01 Dashboard - CentOS 6
+        MENU LABEL ^4) Striker 02 Dashboard - ".$say_os." 6
 	TEXT HELP
-		Installs a new Striker 01 using CentOS 6.
+		Installs a new Striker 02 using ".$say_os." 6.
 	ENDTEXT
-        KERNEL boot/$centos_short/x86_64/vmlinuz
+        KERNEL boot/$os_short/x86_64/vmlinuz
         IPAPPEND 2
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks}." ksdevice=bootif
+        APPEND initrd=boot/$os_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$os_short/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks}." ksdevice=bootif
 ";
-		$i++;
-		$default_config .= "
-LABEL generic-centos-striker
-        MENU LABEL ^$i) Striker 02 Dashboard - CentOS 6
-	TEXT HELP
-		Installs a new Striker 02 using CentOS 6.
-	ENDTEXT
-        KERNEL boot/$centos_short/x86_64/vmlinuz
-        IPAPPEND 2
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$centos_short/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks}." ksdevice=bootif
-";
-	}
-	if ($conf->{pxe}{rhel}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-rhel-striker
-        MENU LABEL ^$i) Striker 01 Dashboard - RHEL 6
-	TEXT HELP
-		Installs a new Striker 01 using RHEL 6.
-	ENDTEXT
-        KERNEL boot/$rhel_short/x86_64/vmlinuz
-        IPAPPEND 2
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker1_ks}." ksdevice=bootif
-";
-		$i++;
-		$default_config .= "
-LABEL generic-rhel-striker
-        MENU LABEL ^$i) Striker 02 Dashboard - RHEL 6
-	TEXT HELP
-		Installs a new Striker 02 using RHEL 6.
-	ENDTEXT
-        KERNEL boot/$rhel_short/x86_64/vmlinuz
-        IPAPPEND 2
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/img/ ks=http://".$conf->{network}{bcn}{ip}."/$rhel_short/x86_64/ks/".$conf->{pxe}{rhel}{striker2_ks}." ksdevice=bootif
-";
-	}
 	
 	# Write out the new one.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out dhcp daemon configuration file.", 1);
-	open (my $file_handle, ">", $conf->{path}{pxe_default_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{pxe_default_config}."], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{pxe_default_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{pxe_default_config}."], the error was: $!\n";
 	print $file_handle $default_config;
 	close $file_handle;
 	
@@ -5431,7 +5305,7 @@ sub configure_dhcp
 	}
 	
 	# See if we have the IP now.
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [".$conf->{network}{bcn}{ip}."]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [".$conf->{network}{bcn}{ip}."]", 1);
 	if (not $conf->{network}{bcn}{ip})
 	{
 		# Error out.
@@ -5459,7 +5333,29 @@ sub configure_dhcp
 	}
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [".$conf->{network}{bcn}{netmask}."]", 3);
 	
-	# Not all users will use DNS.
+	# Not all users will use DNS. If not specified, see if the DNS has already been configured in /etc/resolv.conf.
+	if ((not $conf->{network}{ifn}{dns1}) && (not $conf->{network}{ifn}{dns2}))
+	{
+		my $count      = 1;
+		my $shell_call = "grep ^nameserver /etc/resolv.conf";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/"//g;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /nameserver (\d+\.\d+\.\d+\.\d+)/i)
+			{
+				my $key = "dns".$count;
+				$conf->{network}{ifn}{$key} = $1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::ifn::".$key.": [".$conf->{network}{ifn}{$key}."]", 3);
+				$count++; 
+			}
+		}
+		close $file_handle;
+	}
+
 	my $say_dns = "option domain-name-servers ".$conf->{network}{ifn}{dns1}.", ".$conf->{network}{ifn}{dns2}.";";
 	if ((not $conf->{network}{ifn}{dns1}) && (not $conf->{network}{ifn}{dns2}))
 	{
