@@ -2728,6 +2728,7 @@ sub do_pre_setup
 	rsync_files($conf, $source."/striker/cgi-bin/*", "/var/www/cgi-bin/");
 	rsync_files($conf, $source."/striker/html/*", "/var/www/html/");
 	rsync_files($conf, $source."/striker/tools/*", "/sbin/striker/");
+	rsync_files($conf, $source."/striker/tools/*", "/var/www/html/".$os_dir."/x86_64/files/Tools/striker/");
 	rsync_files($conf, $source."/striker/ScanCore", "/sbin/striker/");
 	rsync_files($conf, $source."/striker/AN", "/usr/share/perl5/");
 	
@@ -4718,16 +4719,8 @@ sub generate_kickstart
 {
 	my ($conf, $os, $machine, $number) = @_;
 	
-	my $short_os_name = $conf->{pxe}{centos}{short_name};
+	my $short_os_name = $os eq "rhel" ? $conf->{pxe}{rhel}{short_name} : $conf->{pxe}{centos}{short_name};
 	my $machine_name  = "new-node0$number";
-	if ($os eq "rhel")
-	{
-		$short_os_name = $conf->{pxe}{rhel}{short_name};
-	}
-	if ($machine eq "striker")
-	{
-		$machine_name = "new-striker0$number";
-	}
 	
 	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
 	   $domain_name = "localdomain" if not $domain_name;
@@ -4745,7 +4738,7 @@ text
 url --url=http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/
 
 # Set the language and keyboard to en_US, UTF-8. Adjust as needed.
-lang en_US.UTF-8
+lang en_CA.UTF-8
 keyboard us
 
 # Set the timezone to Eastern Standard/Daylight Time. To get your preferred
@@ -4759,20 +4752,16 @@ timezone --utc America/Toronto
 # and configure the network manually post-install.
 network --device eth0 --bootproto dhcp --onboot yes --hostname $machine_name.$domain_name
 
-# This is the root user's password, which is \"Initial1\". To change this, set
-# the password you want for a user on an existing system. Once set, look in
-# '/etc/shadow' for the line starting with the user name whom you set the
-# password for.
+# This is the root user's password. The one below should be taken as an example
+# and changed as it is a terrible password.
 authconfig --enableshadow --passalgo=sha512 --enablefingerprint
-rootpw --iscrypted \$6\$W8AdoMvC\$ZX87YTlVdutpsmsISVEqEkblJLPilP46PNTACN2r2MRzH2xgBOFciZgFsx7f5i07scC/fjNuR/B5Y2eOLXpz31
+rootpw Initial1
 
-# In a production system, you will likely want to enable a firewall and
-# SELinux. Given that this script is likely to be used while learning though,
-# I turn them both off to reduce potential problems. Please be sure to build a
-# firewall (Shorewall is good) and to re-enable SELinux as final steps before
-# going into production. This way you will be able to focus on resolving issues
-# specific to firewalling and SELinux without wondering if problems are caused
-# by the general configuration.
+# Default admin user account.
+user --name=admin --plaintext --password=Initial1
+
+# At this time, Striker does not yet work with SELinux in enforcing mode. This
+# is expected to change in a (near) future release.
 firewall --service=ssh
 ";
 	if ($machine eq "striker")
@@ -4785,25 +4774,332 @@ firewall --service=ssh
 	}
 	$kickstart .= "
 	
-# Given how often I rebuild machines, I like to pre-define the initial user and
-# thus skip 'firstboot' to save time.
+# There is no need for the 'first boot' menu system to run, so we will disable
+# it.
 firstboot --disable
 
-# We don't enable auto-reboot because we want the user to stop the DHCP server
-# on the BCN before rebooting to make sure the first boot picks up an IP from
-# the normal, Internet-connected DHCP server.
-#reboot
+# Set the installation logging level.
+logging --level=debug
+
+# Enable httpd so that the local repo is available on boot.
+services --enabled httpd,gpm,iptables
+services --disabled kdump
+
+# Reboot when the install is finished.
+reboot
 
 # This runs a script (below) that generates the partitioning information
 # depending on a rudamentary test for available storage devices.
 \%include /tmp/part-include
 
-# This is a very, very minimal installation. It is suitable for testing install
-# programs or for machines with the minimal attack surface area.
+# This installs most of the stuff we'll need for stage-2 as well as the stage-1
+# requirements.
 \%packages
-\@core
-\@server-policy
+# Common packages
+#-\@Core
+#-\@Base
+acl
+acpid
+aic94xx-firmware
+alteeve-repo
+atmel-firmware
+attr
+audit
+b43-openfwwf
+basesystem
+bash
+bash-completion
+bfa-firmware
+ccs
+
+cim-schema
+compat-libstdc++-33.i686
+coreutils
+cpio
+cronie
+cyrus-sasl
+cyrus-sasl-plain
+dhclient
+dmidecode
+dracut-network
+e2fsprogs
+efibootmgr
+expect
+fence-agents
+filesystem
+freeipmi
+freeipmi-bmc-watchdog
+freeipmi-ipmidetectd
+gcc
+gcc-c++
+glibc
+gpm
+grub
+initscripts
+ipmitool
+iproute
+iptables
+iptables-ipv6
+iputils
+ipw2100-firmware
+ipw2200-firmware
+irqbalance
+ivtv-firmware
+iwl100-firmware
+iwl1000-firmware
+iwl3945-firmware
+iwl4965-firmware
+iwl5000-firmware
+iwl5150-firmware
+iwl6000-firmware
+iwl6000g2a-firmware
+iwl6050-firmware
+kbd
+kernel-devel
+kernel-firmware
+kernel-headers
+kexec-tools
+libertas-usb8388-firmware
+libstdc++-devel.i686
+libstdc++.i686
+mailx
+man
+mlocate
+mtr
+ncurses
+ntp
+OpenIPMI
+OpenIPMI-libs
+openssh-clients
+openssh-server
+openssl-devel
+parted
+passwd
+pciutils
+pcp
 perl
+perl-CGI
+perl-Crypt-SSLeay
+perl-DBD-Pg
+perl-Digest-SHA
+perl-Digest-SHA1
+perl-Mail-RFC822-Address
+perl-Net-SSH2
+perl-Net-Telnet
+perl-Sys-Virt
+perl-TermReadKey
+perl-Text-Diff
+perl-Time-HiRes
+perl-XML-Simple
+policycoreutils
+policycoreutils-python
+postfix
+postgresql95
+procps
+ql2100-firmware
+ql2200-firmware
+ql23xx-firmware
+ql2400-firmware
+ql2500-firmware
+rootfiles
+rpm
+rsync
+rsyslog
+rt61pci-firmware
+rt73usb-firmware
+screen
+selinux-policy-targeted
+setup
+shadow-utils
+sharutils
+sudo
+syslinux
+sysstat
+tuned
+usbutils
+util-linux-ng
+vim
+vim-common
+vim-enhanced
+vim-minimal
+virt-viewer
+wget
+xorg-x11-drv-ati-firmware
+yum
+zd1211-firmware
+";
+	if ($os eq "centos")
+	{
+		$kickstart .= "
+# CentOS specific packages
+yum-plugin-priorities
+";
+	}
+	if ($machine eq "striker")
+	{
+		$kickstart .= "
+# Striker packages needed for Striker dashboards
+abyssinica-fonts
+alsa-plugins-pulseaudio
+at-spi
+augeas-libs
+cjkuni-uming-fonts
+cluster-cim
+control-center
+control-center-extra
+cpp
+createrepo
+dbus
+dejavu-sans-fonts
+dejavu-sans-mono-fonts
+dejavu-serif-fonts
+dhcp
+dnsmasq
+ebtables
+eog
+firefox
+ftp
+gcalctool
+gdm
+gdm-plugin-fingerprint
+gdm-user-switch-applet
+glx-utils
+glibc-devel
+glusterfs
+glusterfs-api
+glusterfs-libs
+gnome-applets
+gnome-media
+gnome-packagekit
+gnome-panel
+gnome-power-manager
+gnome-screensaver
+gnome-session
+gnome-terminal
+gnome-utils
+gnome-vfs2-smb
+google-crosextra-caladea-fonts
+google-crosextra-carlito-fonts
+gpxe-roms-qemu
+gvfs-archive
+gvfs-fuse
+gvfs-smb
+hal
+httpd
+iscsi-initiator-utils
+jomolhari-fonts
+keyutils
+khmeros-base-fonts
+kurdit-unikurd-web-fonts
+libcdio
+liberation-mono-fonts
+liberation-sans-fonts
+liberation-serif-fonts
+libgssglue
+libtirpc
+libevent
+libvirt
+lklug-fonts
+lohit-assamese-fonts
+lohit-bengali-fonts
+lohit-devanagari-fonts
+lohit-gujarati-fonts
+lohit-kannada-fonts
+lohit-oriya-fonts
+lohit-punjabi-fonts
+lohit-tamil-fonts
+lohit-telugu-fonts
+lzop
+madan-fonts
+metacity
+mod_ssl
+mtr-gtk
+nano
+nautilus
+nautilus-open-terminal
+netcf-libs
+nfs-utils
+nfs-utils-lib
+notification-daemon
+ntfs-3g
+ntfsprogs
+numad
+openssh-askpass
+paktype-naqsh-fonts
+paktype-tehreer-fonts
+patch
+pcp-gui
+perl-CPAN
+perl-IO-Socket-SSL
+perl-Net-SSLeay
+perl-Test-Simple
+perl-YAML-Tiny
+perl-libwww-perl
+plymouth-system-theme
+polkit-gnome
+postgresql95-contrib
+postgresql95-libs
+postgresql95-plperl
+postgresql95-server
+pulseaudio-module-gconf
+pulseaudio-module-x11
+qemu-img
+qemu-kvm
+radvd
+rpcbind
+seabios
+sgabios-bin
+shorewall
+sil-padauk-fonts
+smc-meera-fonts
+spice-server
+spice-vdagent
+stix-fonts
+syslinux-tftpboot
+tftp-server
+thai-scalable-waree-fonts
+tibetan-machine-uni-fonts
+un-core-dotum-fonts
+unzip
+vgabios
+vino
+virt-manager
+vlgothic-fonts
+wdaemon
+wqy-zenhei-fonts
+xdg-user-dirs-gtk
+xinetd
+xorg-x11-drivers
+xorg-x11-server-Xorg
+xorg-x11-server-utils
+xorg-x11-utils
+xorg-x11-xauth
+xorg-x11-xinit
+xvattr
+yelp
+";
+	}
+	else
+	{
+		$kickstart .= "
+# Striker packages needed for Anvil! Nodes
+bridge-utils
+cman
+corosync
+drbd84-utils
+gd
+gfs2-utils
+kmod-drbd84
+libvirt
+net-snmp
+qemu-kvm
+qemu-kvm-tools
+python-virtinst
+rgmanager
+ricci
+";
+	}
+	$kickstart .= "
 \%end
 
 # Tell the machine to save downloaded RPM updates (for possible distribution to
@@ -4820,8 +5116,44 @@ sed -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_confi
 sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
 
 # Show details on boot.
+echo 'Setting plymouth to use detailed boot screen'
+plymouth-set-default-theme details --rebuild-initrd
 plymouth-set-default-theme details -R
+sed -i 's/ rhgb//'  /boot/grub/grub.conf
+sed -i 's/ quiet//' /boot/grub/grub.conf
 
+# Setup 'list-ips', which will display the node's post-stage-1 IP address
+# without the user having to log in.
+echo /sbin/striker/list-ips >> /etc/rc.local
+
+# Download 'list-ips' from the Striker we're installing from.
+echo \"Downloading 'list-ips'.\"
+mkdir /sbin/striker
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/striker/tools/list-ips > /sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
+# Download 'fence_raritan_snmp', 'fence_apc_alteeve' and 'fence_delay' from the Striker we're installing from.
+echo \"Downloading 'fence_raritan_snmp'.\"
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
+chown root:root /usr/sbin/fence_raritan_snmp
+chmod 755 /usr/sbin/fence_raritan_snmp
+
+echo \"Downloading 'fence_apc_alteeve'.\"
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/Tools/fence/fence_apc_alteeve > /usr/sbin/fence_apc_alteeve
+chown root:root /usr/sbin/fence_apc_alteeve
+chmod 755 /usr/sbin/fence_apc_alteeve
+
+echo \"Downloading 'fence_delay'.\"
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/Tools/fence/fence_delay > /usr/sbin/fence_delay
+chown root:root /usr/sbin/fence_delay
+chmod 755 /usr/sbin/fence_delay
+
+# Download 'anvil-map-network' from the Striker we're installing from.
+echo \"Downloading 'anvil-map-network'.\"
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/striker/tools/anvil-map-network > /sbin/striker/anvil-map-network
+chown root:root /sbin/striker/hap-map-network
+chmod 755 /sbin/striker/anvil-map-network
 ";
 	
 	my $os_directory = $conf->{pxe}{centos}{short_name};
@@ -4858,47 +5190,62 @@ EOF
 \%pre --log=/tmp/ks-preinstall.log
 
 #!/bin/sh
-
-# Prepare the disks in the script below. It checks '/proc/partitions' to see
-# what configuration to use. It is obviously just a basic script, and should 
-# be customized for each use-case. IE: RAID 5 doesn't make sense with disks >
-# 1 TB... etc.
 ";
 
 	if ($machine eq "node")
 	{
 		$kickstart .= "
+# Prepare the disks in the script below. It checks '/proc/partitions' to see
+# what configuration to use. 
+
 ###############################################################################
 # Below is for 40 GiB / partitions with the balance of free space to be       #
 # configured later.                                                           #
 ###############################################################################
 
+# Default is to use /dev/sda. At this time, software arrays are not supported.
 DRIVE=\"sda\";
 
-### SATA disks
-# EeeBox machine
-if grep -q sdb /proc/partitions; then
-	DRIVE=\"sdb\"
 # /dev/vda KVM virtual machine
-elif grep -q vda /proc/partitions; then
-	DRIVE=\"vdb\"
+if grep -q vda /proc/partitions
+then
+        DRIVE=\"vda\"
+fi
+
+### Nodes with NVMe drives will use '/dev/nvme0n1'
+if grep -q nvme0n1 /proc/partitions; then
+        DRIVE=\"nvme0n1\"
 fi
 
 # Zero-out the first 100GB to help avoid running into problems when a node that
-# was previously in a cluster gets rebuilt.
-dd if=/dev/zero of=/dev/\${DRIVE} bs=4M count=25000
+# was previously in a cluster gets rebuilt. Only run on real hardware, tends to
+# crash VMs.
+if ! grep -q vda /proc/partitions;
+then
+        echo \"Please be patient! Zero'ing out the first 100 GiB of /dev/\${DRIVE}...\"
+        dd if=/dev/zero of=/dev/\${DRIVE} bs=4M count=25000
+fi
+
+### Make sure we always create a GPT disk (https://access.redhat.com/solutions/55652)
+echo \"Creating a GPT disk label\"
+/usr/bin/dd bs=512 count=10 if=/dev/zero of=/dev/\${DRIVE}
+/usr/sbin/parted --script /dev/\${DRIVE} mklabel gpt
+/usr/sbin/parted -l /dev/\${DRIVE}
+/usr/bin/sleep  30
 
 # Now write the partition script
-cat >> /tmp/part-include <<END
+echo \"Done! Now creating and formatting partitions.\"
+cat > /tmp/part-include <<END
 
 zerombr
 clearpart --all --drives=\${DRIVE}
 ignoredisk --only-use=\${DRIVE}
 bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=\${DRIVE}
+part /boot/efi --fstype=efi  --size=200   --asprimary --ondisk=\${DRIVE}
+part /boot     --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
+part swap      --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
+part /         --fstype ext4 --size=40960             --ondisk=\${DRIVE}
 
 END
 
@@ -4909,32 +5256,43 @@ END
 	{
 		# This is the storage for nodes with all remaining space.
 		$kickstart .= "
-###############################################################################
-# Below is for full disk / partitions suitable for striker dashboards and     #
-# generic VMs.                                                                #
-###############################################################################
+# Default is to use /dev/sda. At this time, software arrays are not supported.Helpful?
+
+Yes · 1 1 person found this answer helpful. Click to agree.No · 0 0 people did not find this answer helpful. Click to agree.
+Report
+1–10 of 32 Questions  Previous Questions ◄
+Next Questions ►
+Related Searches
+custom building products membranecustom building products cementfloors barriereco cork foam barrierroberts rollsroberts waxed paperblack 2.5 mm jackssika level 125ca
+Related Products
+
+
+
+
 
 DRIVE=\"sda\";
 
-### SATA disks
-# EeeBox machine
-if grep -q sdb /proc/partitions; then
-	DRIVE=\"sdb\";
 # /dev/vda KVM virtual machine
-elif grep -q vda /proc/partitions; then
-	DRIVE=\"vda\";
+if grep -q vda /proc/partitions; then
+        DRIVE=\"vda\"
 fi
 
+### Dashboards with NVMe drives will use '/dev/nvme0n1'
+if grep -q nvme0n1 /proc/partitions; then
+        DRIVE=\"nvme0n1\"
+fi
+
+# Now write the partition script
 cat >> /tmp/part-include <<END
-
 zerombr
-clearpart --all --drives=sdb
-ignoredisk --only-use=sdb
-bootloader --location=mbr --driveorder=sdb
+clearpart --all --drives=\${DRIVE}
+ignoredisk --only-use=\${DRIVE}
+bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512  --asprimary --ondisk=sdb
-part     swap  --fstype swap --size=4096 --asprimary --ondisk=sdb
-part     /     --fstype ext4 --size=100  --asprimary --ondisk=sdb --grow
+part /boot/efi --fstype=efi  --size=200  --asprimary --ondisk=\${DRIVE}
+part /boot     --fstype ext4 --size=512  --asprimary --ondisk=\${DRIVE}
+part swap      --fstype swap --size=4096 --asprimary --ondisk=\${DRIVE}
+part /         --fstype ext4 --size=100  --asprimary --ondisk=\${DRIVE} --grow
 
 END
 
@@ -4996,13 +5354,13 @@ title New Striker Dashboard 02 - ".$say_os." v6 - Network Installation - Deletes
 	initrd /initrd.img
 
 # Rescue Installed System
-Title Rescue installed system
+title Rescue installed system
 	root (nd)
 	kernel /vmlinuz rescue
 	initrd /initrd.img
 
 # Memory Test
-Title Memory test
+title Memory test
 	memtest
 ";
 	
