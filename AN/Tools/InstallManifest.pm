@@ -11019,7 +11019,7 @@ fi";
 					name1 => "free_space_start",                               value1 => $free_space_start,
 					name2 => "free_space_end",                                 value2 => $free_space_end,
 					name3 => "free_space_size",                                value3 => $free_space_size,
-					name4 => "node::${node}::disk::${disk}::free_space::size", value4 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size},
+					name4 => "node::${node}::disk::${disk}::free_space::size", value4 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{size}}).")",
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($free_space_size <= 268435456)

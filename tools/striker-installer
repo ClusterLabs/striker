@@ -5237,8 +5237,8 @@ echo \"Creating a GPT disk label\"
 echo \"Done! Now creating and formatting partitions.\"
 cat > /tmp/part-include <<END
 
-zerombr
-clearpart --all --drives=\${DRIVE}
+#zerombr
+#clearpart --all --drives=\${DRIVE}
 ignoredisk --only-use=\${DRIVE}
 bootloader --location=mbr --driveorder=\${DRIVE}
 
@@ -5256,20 +5256,7 @@ END
 	{
 		# This is the storage for nodes with all remaining space.
 		$kickstart .= "
-# Default is to use /dev/sda. At this time, software arrays are not supported.Helpful?
-
-Yes · 1 1 person found this answer helpful. Click to agree.No · 0 0 people did not find this answer helpful. Click to agree.
-Report
-1–10 of 32 Questions  Previous Questions ◄
-Next Questions ►
-Related Searches
-custom building products membranecustom building products cementfloors barriereco cork foam barrierroberts rollsroberts waxed paperblack 2.5 mm jackssika level 125ca
-Related Products
-
-
-
-
-
+# Default is to use /dev/sda. At this time, software arrays are not supported.
 DRIVE=\"sda\";
 
 # /dev/vda KVM virtual machine
@@ -5425,7 +5412,7 @@ MENU COLOR help        0  #c0ffffff #00000000 std      # Help text, if set via '
  
 ### Now define the menu options
 LABEL next
-	MENU LABEL ^1) Boot the next device as configured in your BIOS
+	MENU LABEL ^0) Boot the next device as configured in your BIOS
 	MENU DEFAULT
 	localboot -1
 
