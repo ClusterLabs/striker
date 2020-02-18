@@ -5163,17 +5163,16 @@ chmod 755 /sbin/striker/anvil-map-network
 		$os_directory = $conf->{pxe}{rhel}{short_name};
 		$say_os       = "RHEL";
 	}
-	### NOTE: Striker's Install Manifest should handle adding repos as
-	###       needed now.
-	if (0)
-	{
-		$kickstart .= "
+
+	my $short_name = ($conf->{sys}{hostname} =~ /^(.*?)\..*$/)[0];
+	   $short_name = $conf->{sys}{hostname} if not $short_name;
+	$kickstart .= "
 ### Note: dual 'baseurl=' definitions work, but are not defined so it might
 ###       be worth approaching this differently later.
 # Add local repos
-cat > /etc/yum.repos.d/$conf->{sys}{hostname}_$os.repo << EOF
-[".$conf->{sys}{hostname}."-$os]
-name=Striker ".$conf->{sys}{hostname}."'s $say_os 6 repository
+cat > /etc/yum.repos.d/".$short_name."_".$os.".repo << EOF
+[".$short_name."-$os]
+name=Striker ".$short_name." repository
 baseurl=http://".$conf->{network}{bcn}{ip}."/$os_directory/x86_64/img/
 baseurl=http://".$conf->{network}{ifn}{ip}."/$os_directory/x86_64/img/
 enabled=1
@@ -5181,9 +5180,7 @@ gpgcheck=0
 skip_if_unavailable=1
 priority=1
 EOF
-";
-	}
-	$kickstart .= "
+
 \%end
 
 ### Script to setup partitions.
@@ -6144,7 +6141,7 @@ sub install_striker_files
 			$striker_config .= "$line\n";
 			if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 			{
-				$striker_config .= "scancore::db::1::host			=	$conf->{sys}{hostname}\n";
+				$striker_config .= "scancore::db::1::host			=	".$conf->{sys}{hostname}."\n";
 				$striker_config .= "scancore::db::1::port			=	5432\n";
 				$striker_config .= "scancore::db::1::name			=	$conf->{sys}{scancore_database}\n";
 				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";
@@ -6784,7 +6781,7 @@ sub set_hostname
 		if ($line =~ /^HOSTNAME=/)
 		{
 			# Now insert our new authentication lines
-			$hostname .= "HOSTNAME=$conf->{sys}{hostname}\n";
+			$hostname .= "HOSTNAME=".$conf->{sys}{hostname}."\n";
 		}
 		else
 		{

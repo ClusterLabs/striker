@@ -1892,13 +1892,13 @@ sub check_local_repo
 	$an->data->{sys}{'local'}{repo}{centos}  = 0;
 	$an->data->{sys}{'local'}{repo}{generic} = 0;
 	$an->data->{sys}{'local'}{repo}{rhel}    = 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::repo_centos", value1 => $an->data->{path}{repo_centos},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{repo_centos})
 	{
 		$an->data->{sys}{'local'}{repo}{centos} = 1;
-		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "log_0040", message_variables => {
 			type => "CentOS", 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1908,17 +1908,17 @@ sub check_local_repo
 	if (-e $an->data->{path}{repo_generic})
 	{
 		$an->data->{sys}{'local'}{repo}{generic} = 1;
-		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "log_0040", message_variables => {
 			type => "generic", 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::repo_rhel", value1 => $an->data->{path}{repo_rhel},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{repo_rhel})
 	{
 		$an->data->{sys}{'local'}{repo}{rhel} = 1;
-		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "log_0040", message_variables => {
 			type => "RHEL", 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
