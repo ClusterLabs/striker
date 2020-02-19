@@ -944,27 +944,6 @@ else
 	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of ".$conf->{path}{rc_local}.".", 3);
 }
 
-# Warn the user to update their kickstart scripts if they're not using a
-# standard BCN IP address.
-if (($conf->{network}{bcn}{ip} ne "10.20.4.1") && ($conf->{network}{bcn}{ip} ne "10.20.4.2"))
-{
-	logger($conf, $THIS_FILE, __LINE__, "\n##############################################################################", 0);
-	logger($conf, $THIS_FILE, __LINE__, "# WARNING: You're using a non-standard BCN IP address!                       #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          This is OK, but the stock kickstart files will need to be updated #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          to point at this (and the peer) dashboards. Please be sure to     #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          update the kickstart files in;                                    #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          - /var/www/html/{".$conf->{pxe}{rhel}{short_name}.",".$conf->{pxe}{centos}{short_name}."}/x86_64/ks/*.ks                    #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#                                                                            #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          You will also need to manually update the PXE server's            #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          configuration file's pointers to the kickstart files in;          #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          - /var/lib/tftpboot/pxelinux.cfg/default                          #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#                                                                            #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "##############################################################################\n", 0);
-	
-	# Disable reboot so that the user sees this.
-	$conf->{switches}{'no-reboot'} = 1;
-}
-
 # If the user should reboot, tell them.
 logger($conf, $THIS_FILE, __LINE__, "Installation of Striker is complete!\n", 1);
 if ($conf->{sys}{reboot_needed})
@@ -2699,12 +2678,6 @@ sub do_pre_setup
 	
 	logger($conf, $THIS_FILE, __LINE__, "Copying fence_raritan_snmp into /usr/sbin/", 0);
 	copy_file($conf, $source."/Tools/fence/fence_raritan_snmp", "/usr/sbin/");
-	
-	logger($conf, $THIS_FILE, __LINE__, "Copying the KS scripts into place", 0);
-	copy_file($conf, $source."/ks/pxe-new-node01_from-striker0".$striker_number.".ks", "/var/www/html/".$os_dir."/x86_64/ks/pxe-new-node01.ks");
-	copy_file($conf, $source."/ks/pxe-new-node02_from-striker0".$striker_number.".ks", "/var/www/html/".$os_dir."/x86_64/ks/pxe-new-node02.ks");
-	copy_file($conf, $source."/ks/pxe-new-striker01.ks", "/var/www/html/".$os_dir."/x86_64/ks/");
-	copy_file($conf, $source."/ks/pxe-new-striker02.ks", "/var/www/html/".$os_dir."/x86_64/ks/");
 	
 	logger($conf, $THIS_FILE, __LINE__, "Setting the PXE wallpaper.", 0);
 	copy_file($conf, $source."/syslinux/splash.jpg", "/var/lib/tftpboot/");
@@ -5506,6 +5479,8 @@ LABEL generic-centos-striker
 			exit(45);
 		}
 	}
+	# Make sure the 'efi64/bootx64.efi' file is chmod 755
+	chmod 0755, $efi_target;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
