@@ -4411,8 +4411,7 @@ sub configure_iso_source
 	}
 	
 	# Write out the kickstart files.
-	my $say_os = $conf->{pxe}{rhel}{enabled} ? "rhel" : "centos";
-	
+	my $say_os           = $conf->{sys}{is_rhel} ? "rhel" : "centos";
 	my $node1_ks         = generate_kickstart($conf, $say_os, "node", 1);
 	my $node2_ks         = generate_kickstart($conf, $say_os, "node", 2);
 	my $striker1_ks      = generate_kickstart($conf, $say_os, "striker", 1);
@@ -7440,7 +7439,7 @@ if [ -e '".$conf->{executable}{MegaCli64}."' ];
 then 
     if [ -e '".$conf->{executable}{MegaCli64_link}."' ]
     then
-        echo '".$conf->{executable}{MegaCli64_link}." symlink exists';
+#         echo '".$conf->{executable}{MegaCli64_link}." symlink exists';
     else
         ln -s ".$conf->{executable}{MegaCli64}." ".$conf->{executable}{MegaCli64_link}."
         if [ -e '".$conf->{executable}{MegaCli64_link}."' ]
@@ -7616,6 +7615,13 @@ sub install_missing_packages
 sub update_os
 {
 	my ($conf) = @_;
+	
+	# As per https://access.redhat.com/solutions/3573891, occassionally yum update will fail unless this directory is created.
+	if (not -e "/var/lib/rpm-state")
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Creating '/var/lib/rpm-state' to address 'https://access.redhat.com/solutions/3573891'.", 1);
+		mkdir "/var/lib/rpm-state" or warn "$THIS_FILE ".__LINE__."; Failed to create the directory: [/var/lib/rpm-state], error was: $!\n";
+	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient! It may appear that nothing is happening for a", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
