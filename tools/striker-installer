@@ -2681,11 +2681,8 @@ sub do_pre_setup
 	
 	logger($conf, $THIS_FILE, __LINE__, "Setting the PXE wallpaper.", 0);
 	copy_file($conf, $source."/syslinux/splash.jpg", "/var/lib/tftpboot/");
-
-	logger($conf, $THIS_FILE, __LINE__, "Copying the Striker installer and source code into place.", 0);
-	copy_file($conf, $source."/syslinux/splash.jpg", "/var/lib/tftpboot/");
 	copy_file($conf, $source."/EFI/BOOT/pxe_voyager1.xpm.gz", "/var/lib/tftpboot/efi64/");
-	
+
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker to /root/ for the rest of the install to run.", 0);
 	rsync_files($conf, $source."/striker", "/root/");
 	
@@ -5268,7 +5265,7 @@ sub configure_pxe_config
 	
 	my $say_os   = "CentOS";
 	my $os_short = $conf->{pxe}{centos}{short_name};
-	if ($conf->{pxe}{rhel}{enabled})
+	if ($conf->{sys}{is_rhel})
 	{
 		$os_short = $conf->{pxe}{rhel}{short_name};
 		$say_os   = "RHEL";
@@ -5447,11 +5444,12 @@ LABEL generic-centos-striker
 	
 	# Copy the PXE menu background into place.
 	logger($conf, $THIS_FILE, __LINE__, "- Copying PXE server's wallpaper into place.", 1);
-	rsync_files($conf, $conf->{path}{pxe_background_source}, $conf->{directory}{pxelinux}."/");
+	copy_file($conf, "/var/www/html/rhel6/x86_64/img/striker/ISO/".$say_os."/6/Anvil/syslinux/splash.jpg", "/var/lib/tftpboot/efi64/");
+	copy_file($conf, "/var/www/html/rhel6/x86_64/img/striker/ISO/".$say_os."/6/Anvil/EFI/BOOT/pxe_voyager1.xpm.gz", "/var/lib/tftpboot/efi64/");
 
 	# Setup UEFI PXE booting.
-	my $efi_source = $conf->{path}{pxe_efi_source};
-	my $efi_target = $conf->{directory}{pxelinux_efi}."/".$conf->{path}{pxe_efi_target};
+	my $efi_source  = $conf->{path}{pxe_efi_source};
+	my $efi_target  = $conf->{directory}{pxelinux_efi}."/".$conf->{path}{pxe_efi_target};
 	if (not -e $efi_target)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Creating EFI PXE Linux directory: [".$conf->{directory}{pxelinux_efi}."]", 1);
@@ -5480,6 +5478,17 @@ LABEL generic-centos-striker
 	}
 	# Make sure the 'efi64/bootx64.efi' file is chmod 755
 	chmod 0755, $efi_target;
+
+	my $efi_vmlinuz = $conf->{directory}{pxelinux_efi}."/vmlinux";
+	my $efi_initdr  = $conf->{directory}{pxelinux_efi}."/initrd.img";
+	if (not -e $efi_vmlinuz)
+	{
+		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/vmlinuz", $efi_vmlinuz);
+	}
+	if (not -e $efi_initdr)
+	{
+		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/initrd.img", $efi_initdr);
+	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
