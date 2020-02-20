@@ -5444,8 +5444,8 @@ LABEL generic-centos-striker
 	
 	# Copy the PXE menu background into place.
 	logger($conf, $THIS_FILE, __LINE__, "- Copying PXE server's wallpaper into place.", 1);
-	copy_file($conf, "/var/www/html/rhel6/x86_64/img/striker/ISO/".$say_os."/6/Anvil/syslinux/splash.jpg", "/var/lib/tftpboot/efi64/");
-	copy_file($conf, "/var/www/html/rhel6/x86_64/img/striker/ISO/".$say_os."/6/Anvil/EFI/BOOT/pxe_voyager1.xpm.gz", "/var/lib/tftpboot/efi64/");
+	copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/striker/ISO/".$say_os."/6/Anvil/syslinux/splash.jpg", "/var/lib/tftpboot/efi64/");
+	copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/striker/ISO/".$say_os."/6/Anvil/EFI/BOOT/pxe_voyager1.xpm.gz", "/var/lib/tftpboot/efi64/");
 
 	# Setup UEFI PXE booting.
 	my $efi_source  = $conf->{path}{pxe_efi_source};
@@ -7235,10 +7235,10 @@ sub verify_os
 		if ($line =~ /Red Hat/i)
 		{
 			$conf->{sys}{is_rhel} = 1;
-			logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 1);
 		}
 	}
 	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 1);
 	
 	if ($major == 6)
 	{
