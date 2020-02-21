@@ -2300,6 +2300,19 @@ sub get_hostname
 		$conf->{sys}{hostname} = "localhost.localdomain" if not $conf->{sys}{hostname};
 	}
 	
+	# Pull out the prefix and domain.
+	$conf->{sys}{prefix} = "an";
+	$conf->{sys}{domain} = "alteeve.com";
+	if ($conf->{sys}{hostname} =~ /^(\w+)-/)
+	{
+		$conf->{sys}{prefix} = $1;
+	}
+	if ($conf->{sys}{hostname} =~ /^\w+\.(.*)$/)
+	{
+		$conf->{sys}{domain} = $2;
+	}
+	logger($conf, $THIS_FILE, __LINE__, "- sys::prefix: [".$conf->{sys}{prefix}."], sys::domain: [".$conf->{sys}{domain}."].", 1);
+	
 	return(0);
 }
 
@@ -4689,7 +4702,11 @@ sub generate_kickstart
 	my ($conf, $os, $machine, $number) = @_;
 	
 	my $short_os_name = $os eq "rhel" ? $conf->{pxe}{rhel}{short_name} : $conf->{pxe}{centos}{short_name};
-	my $machine_name  = "new-node0$number";
+	my $machine_name  = "new-node0".$number;
+	if ($machine eq "striker")
+	{
+		$machine_name  = "new-striker0".$number;
+	}
 	
 	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
 	   $domain_name = "localdomain" if not $domain_name;
@@ -4719,7 +4736,7 @@ timezone --utc America/Toronto
 # This sets the (first) ethernet device. There is currently no way to map
 # device names to physical interfaces. For this reason, I use DHCP for install
 # and configure the network manually post-install.
-network --device eth0 --bootproto dhcp --onboot yes --hostname $machine_name.$domain_name
+network --device eth0 --bootproto dhcp --onboot yes --hostname ".$machine_name.".".$domain_name."
 
 # This is the root user's password. The one below should be taken as an example
 # and changed as it is a terrible password.
@@ -5123,6 +5140,12 @@ echo \"Downloading 'anvil-map-network'.\"
 curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/striker/tools/anvil-map-network > /sbin/striker/anvil-map-network
 chown root:root /sbin/striker/hap-map-network
 chmod 755 /sbin/striker/anvil-map-network
+
+# Show details on boot.
+echo \"Setting plymouth to use detailed boot screen\"
+plymouth-set-default-theme details --rebuild-initrd
+sed -i 's/ rhgb//'  /boot/grub/grub.conf
+sed -i 's/ quiet//' /boot/grub/grub.conf
 ";
 	
 	my $os_directory = $conf->{pxe}{centos}{short_name};
@@ -5135,6 +5158,59 @@ chmod 755 /sbin/striker/anvil-map-network
 
 	my $short_name = ($conf->{sys}{hostname} =~ /^(.*?)\..*$/)[0];
 	   $short_name = $conf->{sys}{hostname} if not $short_name;
+	
+	if ($machine eq "striker")
+	{
+		my $peer_number = $number eq "1" ? "2" : "1";
+		
+		# Striker stuff
+		logger($conf, $THIS_FILE, __LINE__, "- sys::prefix: [".$conf->{sys}{prefix}."], sys::domain: [".$conf->{sys}{domain}."].", 1);
+		$kickstart .= "
+# Download 'striker-installer'.
+echo \"Downloading 'striker-installer'.\"
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/striker/tools/striker-installer > /root/striker-installer
+chown root:root /root/striker-installer
+chmod 755 /root/striker-installer
+
+# Now setup the script for the user to call once booted.
+echo 'Writing out the sample striker-installer script'
+cat > /root/striker-installer.example << EOF
+# This is an example 'striker-installer' call. Feel free to edit this file here
+# and then call it with 'sh /root/striker-installer.example' to save typing
+# all this out.
+# 
+# To understand what all these switches do, and what other switches are 
+# available, please run './striker-installer --help'. 
+
+./striker-installer \\\\
+ -c \"".$conf->{sys}{customer}."\" \\\\
+ -n \"".$conf->{sys}{prefix}."-striker0".$number.".".$conf->{sys}{domain}."\" \\\\
+ -u \"admin:Initial1\" \\\\
+ -i 10.255.4.".$number."/255.255.0.0,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\\\
+ -b 10.20.4.".$number."/255.255.0.0 \\\\
+ -p 10.20.10.200:10.20.10.220 \\\\
+ --peer-dashboard hostname=".$conf->{sys}{prefix}."-striker0".$peer_number.".".$conf->{sys}{domain}.",bcn_ip=10.20.4.".$peer_number." \\\\
+";
+		# Use '--rhn' on RHEL only.
+		if ($os eq "rhel")
+		{
+			$kickstart .= " --router-mode \\\\\n";
+			$kickstart .= " --rhn \"rhn_admin:rhn_Initial1\"\n";
+		}
+		else
+		{
+			$kickstart .= " --router-mode\n";
+		}
+		$kickstart .= "EOF
+chmod 755 /root/striker-installer.example
+";
+	}
+	else
+	{
+		# Node stuff
+		$kickstart .= "";
+	}
+	
 	$kickstart .= "
 ### Note: dual 'baseurl=' definitions work, but are not defined so it might
 ###       be worth approaching this differently later.
@@ -5150,6 +5226,26 @@ skip_if_unavailable=1
 priority=1
 EOF
 
+\%end
+
+# This is set to run at the end. It copies all of the kickstart logs into the
+# root user's home page.
+\%post --nochroot
+echo 'Copying all the anaconda related log files to /root/install/'
+
+if [ ! -e '/mnt/sysimage/root/install' ]
+then
+	mkdir /mnt/sysimage/root/install
+fi
+cp -p /tmp/nochroot*   /mnt/sysimage/root/install/
+cp -p /tmp/kernel*     /mnt/sysimage/root/install/
+cp -p /tmp/anaconda*   /mnt/sysimage/root/install/
+cp -p /tmp/ks*         /mnt/sysimage/root/install/
+cp -p /tmp/program.log /mnt/sysimage/root/install/
+cp -p /tmp/storage*    /mnt/sysimage/root/install/
+cp -p /tmp/yum.log     /mnt/sysimage/root/install/
+cp -p /tmp/ifcfg*      /mnt/sysimage/root/install/
+cp -p /tmp/syslog      /mnt/sysimage/root/install/
 \%end
 
 ### Script to setup partitions.
@@ -5252,6 +5348,8 @@ END
 \%end
 ";
 	}
+	
+	$kickstart .= "";
 	
 	return($kickstart);
 }
@@ -7238,7 +7336,7 @@ sub verify_os
 		}
 	}
 	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 1);
+	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 2);
 	
 	if ($major == 6)
 	{
@@ -9440,7 +9538,7 @@ Normal install
  ./striker-installer -c "Alteeve's Niche\!" \
                   -n an-striker01.alteeve.com \
                   -u "admin:secret password" \
-                  -p 10.20.10.200:10.20.10.210 \
+                  -p 10.20.10.200:10.20.10.220 \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
@@ -9450,7 +9548,7 @@ Developer install, using local copies of ISOs:
                   -n an-striker01.alteeve.com \
                   -d git \
                   -u "admin:secret password" \
-                  -p 10.20.10.200:10.20.10.210 \
+                  -p 10.20.10.200:10.20.10.220 \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
