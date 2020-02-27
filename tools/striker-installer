@@ -2311,7 +2311,7 @@ sub get_hostname
 	{
 		$conf->{sys}{domain} = $2;
 	}
-	logger($conf, $THIS_FILE, __LINE__, "- sys::prefix: [".$conf->{sys}{prefix}."], sys::domain: [".$conf->{sys}{domain}."].", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- sys::prefix: [".$conf->{sys}{prefix}."], sys::domain: [".$conf->{sys}{domain}."].", 2);
 	
 	return(0);
 }
@@ -2644,16 +2644,6 @@ sub do_pre_setup
 	}
 	logger($conf, $THIS_FILE, __LINE__, "os_dir: [$os_dir]", 3);
 	
-	logger($conf, $THIS_FILE, __LINE__, "Creating the apache docroot and PXE directories.", 0);
-	make_path("/var/www/html/".$os_dir."/x86_64/img", 
-	          "/var/www/html/".$os_dir."/x86_64/iso", 
-	          "/var/www/html/".$os_dir."/x86_64/ks", 
-	          "/var/www/html/".$os_dir."/x86_64/files",
-	          "/var/lib/tftpboot/boot/".$os_dir."/x86_64/", 
-	          "/var/lib/tftpboot/pxelinux.cfg",
-	          "/sbin/striker",
-	          "/var/lib/tftpboot/efi64/");
-	
 	# Copy the source ISO to the iso directory.
 	my $source_iso = "";
 	my $shell_call = $conf->{executable}{mount};
@@ -2813,6 +2803,25 @@ priority=1
 	return(0);
 }
 
+sub create_directories
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Creating directories.", 0);
+	my $os_dir = $conf->{sys}{is_rhel} ? $conf->{pxe}{rhel}{short_name} : $conf->{pxe}{centos}{short_name};
+	logger($conf, $THIS_FILE, __LINE__, "os_dir: [$os_dir]", 1);
+	make_path("/var/www/html/".$os_dir."/x86_64/img", 
+	          "/var/www/html/".$os_dir."/x86_64/iso", 
+	          "/var/www/html/".$os_dir."/x86_64/ks", 
+	          "/var/www/html/".$os_dir."/x86_64/files",
+	          "/var/lib/tftpboot/boot/".$os_dir."/x86_64/", 
+	          "/var/lib/tftpboot/pxelinux.cfg",
+	          "/var/lib/tftpboot/efi64",
+	          "/sbin/striker");
+	
+	return(0);
+}
+
 # This handles the rest of the install (everything except the network).
 sub setup_striker
 {
@@ -2826,17 +2835,15 @@ sub setup_striker
 	# If requested, this will install and configure the GUI.
 	configure_gui($conf);
 	
+	# Make sure directories we'll need exist
+	create_directories($conf);
+	
 	# When installing on a minimal install, the user will use '--source' to point to the mounted Anvil! 
 	# ISO.
 	if ($conf->{switches}{source})
 	{
 		do_pre_setup($conf);
 	}
-	
-	### NOTE: No longer supported. The source will be in place thanks to the kickstart file that built 
-	###       this dashboard.
-	# Download Striker, if needed.
-	#download_striker($conf);
 	
 	# If the user installed from github master, we'll need to update the source directory.
 	if (not -e $conf->{directory}{source})
@@ -2861,9 +2868,6 @@ sub setup_striker
 	
 	# Copy Striker files into place
 	install_striker_files($conf);
-	
-	# Configure PXE and dhcpd stuff
-	configure_pxe($conf);
 
 	# Configure the various dashboard tools, like the striker-usb tools.
 	configure_striker_tools($conf);
@@ -2877,11 +2881,20 @@ sub setup_striker
 	# Set owners and file modes.
 	set_file_ownership_and_modes($conf);
 	
+	# Create a downloadable compressed file other machines to grab during their stage-1 install.
+	create_striker_source($conf);
+	
 	# Configure IPMI
 	configure_ipmi($conf);
 	
 	# (Re)start daemons.
 	manage_daemons($conf);
+	
+	# Configure PXE and dhcpd stuff
+	configure_pxe($conf);
+	
+	# Generate kickstart files.
+	write_kickstarts($conf);
 	
 	# Make sure that selinux is enabled. This runs after the main installer so that
 	# we can ensure any files we created or installed have the right
@@ -2897,7 +2910,7 @@ sub setup_striker
 			logger($conf, $THIS_FILE, __LINE__, "- 'tools/striker-configure-vmm' use disabled by '--no-striker-configure-vmm', skipping it.", 1);
 		}
 		else
-		{
+ 		{
 			# Call 'tools/striker-configure-vmm'.
 			my $shell_call = $conf->{directory}{striker_tools}."/striker-configure-vmm --enable";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -2921,6 +2934,99 @@ sub setup_striker
 	# Set the root user's password.
 	set_root_password($conf);
 	
+	return(0);
+}
+
+# Generate kickstart files.
+sub write_kickstarts
+{
+	my ($conf) = @_;
+	
+	# Write out the kickstart files.
+	logger($conf, $THIS_FILE, __LINE__, "- Generating and recording kickstart files.", 1);
+	my $say_os           = $conf->{sys}{is_rhel} ? "rhel" : "centos";
+	my $node1_ks         = generate_kickstart($conf, $say_os, "node", 1);
+	my $node2_ks         = generate_kickstart($conf, $say_os, "node", 2);
+	my $striker1_ks      = generate_kickstart($conf, $say_os, "striker", 1);
+	my $striker2_ks      = generate_kickstart($conf, $say_os, "striker", 2);
+	my $node1_ks_file    = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{node1_ks};
+	my $node2_ks_file    = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{node2_ks};
+	my $striker1_ks_file = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{striker1_ks};
+	my $striker2_ks_file = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{striker2_ks};
+	
+	# Write out the files.
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." node 01 kickstart file.", 1);
+	open (my $file_handle, ">", $node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$node1_ks_file], the error was: $!\n";
+	print $file_handle $node1_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$node1_ks_file].", 1);
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." node 02 kickstart file.", 1);
+	open ($file_handle, ">", $node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$node2_ks_file], the error was: $!\n";
+	print $file_handle $node2_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$node2_ks_file].", 1);
+
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." striker 01 kickstart file.", 1);
+	open ($file_handle, ">", $striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$striker1_ks_file], the error was: $!\n";
+	print $file_handle $striker1_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$striker1_ks_file].", 1);
+
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." striker 02 kickstart file.", 1);
+	open ($file_handle, ">", $striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$striker2_ks_file], the error was: $!\n";
+	print $file_handle $striker2_ks;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$striker2_ks_file].", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- ".$say_os." PXE configuration complete.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+	
+	return(0);
+}
+
+# Create a downloadable compressed file other machines to grab during their stage-1 install.
+sub create_striker_source
+{
+	my ($conf) = @_;
+	
+	# Now start copying things into place. 
+	logger($conf, $THIS_FILE, __LINE__, "Creating the striker source tarball for future installs.", 1);
+	my $source_directory = "/var/www/html/".$conf->{pxe}{centos}{short_name}."/x86_64";
+	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 2);
+	if ($conf->{sys}{is_rhel})
+	{
+		$source_directory = "/var/www/html/".$conf->{pxe}{rhel}{short_name}."/x86_64";
+	}
+	logger($conf, $THIS_FILE, __LINE__, "source_directory: [$source_directory]", 2);
+	
+	my $shell_call = "
+cd ".$source_directory."/img;
+tar -cvzf ".$source_directory."/files/striker.tar.gz ./striker;
+cd /root";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "Output: [".$line."]", 2);
+	}
+	close $file_handle;
+	
+	my $shell_call = "
+cd ".$source_directory.";
+tar -cvzf ".$source_directory."/files/img.tar.gz ./img;
+cd /root";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "Output: [".$line."]", 2);
+	}
+	close $file_handle;
+		
 	return(0);
 }
 
@@ -4420,43 +4526,6 @@ sub configure_iso_source
 		}
 	}
 	
-	# Write out the kickstart files.
-	my $say_os           = $conf->{sys}{is_rhel} ? "rhel" : "centos";
-	my $node1_ks         = generate_kickstart($conf, $say_os, "node", 1);
-	my $node2_ks         = generate_kickstart($conf, $say_os, "node", 2);
-	my $striker1_ks      = generate_kickstart($conf, $say_os, "striker", 1);
-	my $striker2_ks      = generate_kickstart($conf, $say_os, "striker", 2);
-	my $node1_ks_file    = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{node1_ks};
-	my $node2_ks_file    = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{node2_ks};
-	my $striker1_ks_file = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{striker1_ks};
-	my $striker2_ks_file = "/var/www/html/".$say_os."6/x86_64/ks/".$conf->{pxe}{$say_os}{striker2_ks};
-	
-	# Write out the files.
-	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." node 01 kickstart file.", 1);
-	open (my $file_handle, ">", $node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$node1_ks_file], the error was: $!\n";
-	print $file_handle $node1_ks;
-	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$node1_ks_file].", 1);
-	
-	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." node 02 kickstart file.", 1);
-	open ($file_handle, ">", $node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$node2_ks_file], the error was: $!\n";
-	print $file_handle $node2_ks;
-	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$node2_ks_file].", 1);
-
-	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." striker 01 kickstart file.", 1);
-	open ($file_handle, ">", $striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$striker1_ks_file], the error was: $!\n";
-	print $file_handle $striker1_ks;
-	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$striker1_ks_file].", 1);
-
-	logger($conf, $THIS_FILE, __LINE__, "- Writing out ".$say_os." striker 02 kickstart file.", 1);
-	open ($file_handle, ">", $striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$striker2_ks_file], the error was: $!\n";
-	print $file_handle $striker2_ks;
-	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$striker2_ks_file].", 1);
-	logger($conf, $THIS_FILE, __LINE__, "- ".$say_os." PXE configuration complete.", 1);
-	
 	logger($conf, $THIS_FILE, __LINE__, "Done!\n", 1);
 
 	return(0);
@@ -5166,9 +5235,20 @@ sed -i 's/ quiet//' /boot/grub/grub.conf
 		# Striker stuff
 		logger($conf, $THIS_FILE, __LINE__, "- sys::prefix: [".$conf->{sys}{prefix}."], sys::domain: [".$conf->{sys}{domain}."].", 1);
 		$kickstart .= "
-# Download 'striker-installer'.
-echo \"Downloading 'striker-installer'.\"
-curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/img/striker/tools/striker-installer > /root/striker-installer
+# Download striker source package.
+echo \"Downloading striker source.\"
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/files/striker.tar.gz > /root/striker.tar.gz
+tar -xvzf /root/striker.tar.gz --directory=/root/
+
+# Download apache 'img' source.
+echo \"Downloading img source.\"
+mkdir -p /var/www/html/$short_os_name/x86_64/files
+curl http://".$conf->{network}{bcn}{ip}."/$short_os_name/x86_64/files/img.tar.gz > /var/www/html/$short_os_name/x86_64/files/img.tar.gz
+tar -xvzf /var/www/html/$short_os_name/x86_64/files/img.tar.gz --directory=/var/www/html/$short_os_name/x86_64/
+
+# Copy 'striker-installer'.
+echo \"Preparing 'striker-installer'.\"
+cp /root/striker/tools/striker-installer /root/
 chown root:root /root/striker-installer
 chmod 755 /root/striker-installer
 
@@ -5182,12 +5262,12 @@ cat > /root/striker-installer.example << EOF
 # To understand what all these switches do, and what other switches are 
 # available, please run './striker-installer --help'. 
 
-./striker-installer \\\\
+/root/striker-installer \\\\
  -c \"".$conf->{sys}{customer}."\" \\\\
  -n \"".$conf->{sys}{prefix}."-striker0".$number.".".$conf->{sys}{domain}."\" \\\\
  -u \"admin:Initial1\" \\\\
- -i 10.255.4.".$number."/255.255.0.0,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\\\
- -b 10.20.4.".$number."/255.255.0.0 \\\\
+ -i 10.255.4.".$number."/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\\\
+ -b 10.20.4.".$number."/16 \\\\
  -p 10.20.10.200:10.20.10.220 \\\\
  --peer-dashboard hostname=".$conf->{sys}{prefix}."-striker0".$peer_number.".".$conf->{sys}{domain}.",bcn_ip=10.20.4.".$peer_number." \\\\
 ";
@@ -7216,11 +7296,11 @@ sub register_with_rhn
 	
 	if (not $conf->{sys}{internet_access})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - RHN credentials given, but no internet access found.", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Red Hat credentials given, but no internet access found.", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration will probably fail.", 0);
 	}
 	### TODO: Escape bash special vars in passwords.
-	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Checking if this system has been registered yet.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Red Hat credentials given. Checking if this system has been registered yet.", 1);
 	
 	# Am I already registered?
 	my ($registered, $optional_repo) = check_if_registered_with_rhn($conf);
