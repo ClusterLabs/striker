@@ -5965,7 +5965,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6293,7 +6293,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6597,7 +6597,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6845,7 +6845,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7103,7 +7103,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7385,7 +7385,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7704,7 +7704,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8000,7 +8000,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8246,7 +8246,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8484,7 +8484,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8725,7 +8725,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9012,7 +9012,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9274,7 +9274,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9591,7 +9591,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9893,7 +9893,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10261,7 +10261,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10544,7 +10544,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10832,7 +10832,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11288,7 +11288,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11575,11 +11575,11 @@ INSERT INTO
 						###       we read during a resync). To deal with this, we'll 
 						###       do an explicit check before confirming the INSERT).
 						my $count_query = "SELECT COUNT(*) FROM public.hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid).";";
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($count)
@@ -11651,9 +11651,14 @@ INSERT INTO
 	{
 		# Merge the queries with public schema queries being first.
 		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
-		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		my $count = @{$an->data->{db_resync}{$id}{sql}};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "count", value2 => $count,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count)
 		{
-			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({log_level => 2, id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
 			delete $an->data->{db_resync}{$id}{sql};
 		}
 	}

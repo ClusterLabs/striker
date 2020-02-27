@@ -1182,6 +1182,7 @@ sub do_db_write
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	my $log_level = defined $parameter->{log_level} ? $parameter->{log_level} : 3;
 	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "do_db_write" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Setup my variables.
@@ -1190,7 +1191,7 @@ sub do_db_write
 	my $line    = $parameter->{line}    ? $parameter->{line}    : "";
 	my $query   = $parameter->{query}   ? $parameter->{query}   : "";
 	my $reenter = $parameter->{reenter} ? $parameter->{reenter} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => $log_level, message_key => "an_variables_0005", message_variables => {
 		name1 => "id",      value1 => $id, 
 		name2 => "source",  value2 => $source, 
 		name3 => "line",    value3 => $line, 
@@ -1230,7 +1231,7 @@ sub do_db_write
 	my $limit     = 25000;
 	my $count     = 0;
 	my $query_set = [];
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => $log_level, message_key => "an_variables_0002", message_variables => {
 		name1 => "query",                       value1 => $query, 
 		name2 => "sys::db::maximum_batch_size", value2 => $an->data->{sys}{db}{maximum_batch_size}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1247,7 +1248,7 @@ sub do_db_write
 		
 		# Use the set value now.
 		$limit = $an->data->{sys}{db}{maximum_batch_size};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 			name1 => "limit", value1 => $limit, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1258,7 +1259,7 @@ sub do_db_write
 		
 		# If I am re-entering, then we'll proceed normally. If not, and if we have more than 10k 
 		# queries, we'll split up the queries into 10k chunks and re-enter.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0003", message_variables => {
 			name1 => "count",   value1 => $count, 
 			name2 => "limit",   value2 => $limit, 
 			name3 => "reenter", value3 => $reenter, 
@@ -1267,7 +1268,7 @@ sub do_db_write
 		{
 			my $i    = 0;
 			my $next = $limit;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => $log_level, message_key => "an_variables_0002", message_variables => {
 				name1 => "i",    value1 => $i, 
 				name2 => "next", value2 => $next, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1316,7 +1317,7 @@ sub do_db_write
 	foreach my $id (@db_ids)
 	{
 		# Do the actual query(ies)
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "count", value2 => $count, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1360,7 +1361,7 @@ sub do_db_write
 		}
 		
 		# Commit the changes.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($count)

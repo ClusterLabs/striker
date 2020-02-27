@@ -1753,7 +1753,7 @@ sub build_iso
 	}
 	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '".$volume_id."' -appid '".$say_anvil." ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file ".$conf->{path}{iso}{source_directory};
 	my $mkisofs_output = "";
-	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
+	print __LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{

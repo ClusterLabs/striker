@@ -2335,7 +2335,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2610,7 +2610,7 @@ INSERT INTO
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count_query", value1 => $count_query, 
 						}, file => $THIS_FILE, line => __LINE__});
-						my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						my $count = $an->DB->do_db_query({id => $id, query => $count_query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "count", value1 => $count, 
 						}, file => $THIS_FILE, line => __LINE__});
