@@ -5657,7 +5657,7 @@ LABEL generic-centos-striker
 	# Make sure the 'efi64/bootx64.efi' file is chmod 755
 	chmod 0755, $efi_target;
 
-	my $efi_vmlinuz = $conf->{directory}{pxelinux_efi}."/vmlinux";
+	my $efi_vmlinuz = $conf->{directory}{pxelinux_efi}."/vmlinuz";
 	my $efi_initdr  = $conf->{directory}{pxelinux_efi}."/initrd.img";
 	if (not -e $efi_vmlinuz)
 	{

@@ -1003,7 +1003,8 @@ sub rsync
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "rsync" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	my $log_level = defined $parameter->{log_level} ? $parameter->{log_level} : 3;
+	$an->Log->entry({log_level => $log_level, title_key => "tools_log_0001", title_variables => { function => "rsync" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	$an->Alert->_set_error;
 	
 	# Check my parameters.
@@ -1014,7 +1015,7 @@ sub rsync
 	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
 	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
 	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => $log_level, message_key => "an_variables_0006", message_variables => {
 		name1 => "node",        value1 => $node, 
 		name2 => "target",      value2 => $target, 
 		name3 => "port",        value3 => $port, 
@@ -1030,7 +1031,7 @@ sub rsync
 	if (($port) && ($port ne "22"))
 	{
 		$switches .= " -e 'ssh -p $port'";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 			name1 => "switches", value1 => $switches, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1058,7 +1059,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1067,7 +1068,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1086,7 +1087,7 @@ sub rsync
 		{
 			# No target, set the 'remote_machine' as the target.
 			$target = $remote_machine;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target, 
 			}, file => $THIS_FILE, line => __LINE__});
 			#$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => $THIS_FILE, line => __LINE__});
@@ -1111,7 +1112,7 @@ sub rsync
 			target   => $target,
 			password => $password, 
 		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 			name1 => "wrapper", value1 => $wrapper, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1119,7 +1120,7 @@ sub rsync
 		$shell_call = "$wrapper $switches $source $destination";
 	}
 	# Now make the call
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1129,22 +1130,19 @@ sub rsync
 		chomp;
 		my $line = $_;
 		   $line =~ s/\r//g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /Offending key in (\/.*\/).ssh\/known_hosts:(\d+)$/)
 		{
-			### TODO: I'm still mixed on taking this behaviour... a trade off between useability 
-			###       and security... As of now, the logic for doing it is that the BCN should 
-			###       be isolated and secured so favour usability.
 			# Need to delete the old key or warn the user.
 			my $path        = $1;
 			my $line_number = $2;
 			   $failed      = 1;
 			my $source      = $path.".ssh\/known_hosts";
 			my $destination = $path."known_hosts.".$an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => $log_level, message_key => "an_variables_0005", message_variables => {
 				name1 => "path",        value1 => $path, 
 				name2 => "line_number", value2 => $line_number, 
 				name3 => "failed",      value3 => $failed, 
@@ -1155,7 +1153,7 @@ sub rsync
 			if ($line_number)
 			{
 				my $shell_call = $an->data->{path}{cp}." $source $destination && ".$an->data->{path}{sed}." -ie '".$line_number."d' $source";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1164,7 +1162,7 @@ sub rsync
 					# There should never be any output, but just in case...
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}

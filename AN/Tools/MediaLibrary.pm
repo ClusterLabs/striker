@@ -1507,14 +1507,14 @@ sub _process_task
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
 		name2 => "cgi::confirm", value2 => $an->data->{cgi}{confirm}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1863,7 +1863,7 @@ sub _save_file_to_disk
 	
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1871,7 +1871,7 @@ sub _save_file_to_disk
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -1909,7 +1909,6 @@ sub _save_file_to_disk
 	}
 	else
 	{
-		# TODO: Make sure characters like spaces and whatnot don't need to be escaped.
 		my $out_file =  $an->data->{path}{media}."/".$an->data->{cgi}{file};
 		   $out_file =~ s/\/\//\//g;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2023,7 +2022,7 @@ sub _upload_to_shared
 	my $target     = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port       = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password   = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "source",     value3 => $source,
@@ -2038,7 +2037,7 @@ sub _upload_to_shared
 	my $switches    = $an->data->{args}{rsync};
 	my $file        = ($source =~ /^.*\/(.*)$/)[0];
 	my $destination = "root\@${target}:".$an->data->{path}{shared_files}."/";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "switches",    value1 => $switches,
 		name2 => "destination", value2 => $destination,
 		name3 => "file",        value3 => $file,
@@ -2047,6 +2046,7 @@ sub _upload_to_shared
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $failed = $an->Storage->rsync({
+		log_level	=>	3,
 		source		=>	$source,
 		target		=>	$target,
 		port		=>	$port,
@@ -2059,7 +2059,7 @@ sub _upload_to_shared
 	if ($an->data->{cgi}{script})
 	{
 		my $shell_call = $an->data->{path}{'chmod'}." 755 ".$an->data->{path}{shared_files}."/".$file;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2071,13 +2071,13 @@ sub _upload_to_shared
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "failed", value1 => $failed,
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($failed);
