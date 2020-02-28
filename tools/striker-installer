@@ -52,7 +52,7 @@
 # 36 - Failed to restart database server.
 # 37 - Failed to access the database server as 'postgres'. Striker password did
 #      not work when set in the postgres user's ~/.pgpass file.
-# 38 - Failed to register against RHN.
+# 38 - Failed to register against Red Hat.
 # 39 - Failed to configure shorewall because the BCN subnet mask could not be
 #      converted to CIDR notation.
 # 40 - Failed to install perl-Crypt-SSLeay, unable to download a repository
@@ -850,7 +850,7 @@ verify_internet_access($conf, 0);
 # Get the hostname if the user didn't set it.
 get_hostname($conf);
 
-# Register with RHN, if needed.
+# Register with Red Hat, if needed.
 if ($conf->{sys}{register_with_rhn})
 {
 	register_with_rhn($conf);
@@ -1255,7 +1255,7 @@ sub compile_network_drivers
 							# Write a skeleton config file that is set to DHCP 
 							# because often this interface is used as the IFN 
 							# and is needed to access the web, which is needed 
-							# to register the dashboard with RHN.
+							# to register the dashboard with Red Hat.
 							setup_new_interface($conf);
 						}
 						else
@@ -7227,7 +7227,7 @@ sub create_apache_home_directories
 	return(0);
 }
 
-# This checks to see if this server is already registered with RHN yet.
+# This checks to see if this server is already registered with Red Hat yet.
 sub check_if_registered_with_rhn
 {
 	my ($conf) = @_;
@@ -7289,7 +7289,7 @@ sub check_if_registered_with_rhn
 	return($registered, $optional_repo);
 }
 
-# This does the actual work of registering with RHN.
+# This does the actual work of registering with Red Hat.
 sub register_with_rhn
 {
 	my ($conf) = @_;
@@ -7333,7 +7333,7 @@ sub register_with_rhn
 	# Registered now?
 	if (not $registered)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with RHN appears to have failed!", 1);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with Red Hat appears to have failed!", 1);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   You can run without the '--rhn' switch to install using local packages.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Installation aborted. ", 1);
 		exit(38);
@@ -7366,7 +7366,7 @@ sub register_with_rhn
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!", 1);
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Adding the 'Optional' Red Hat channel appears to have failed!", 1);
 		}
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
@@ -7454,7 +7454,7 @@ sub verify_os
 		logger($conf, $THIS_FILE, __LINE__, "- This OS is RHEL proper.", 1);
 		if (-e $conf->{path}{rhn_file})
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- The system appears to already be registered with RHN.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- The system appears to already be registered with Red Hat.", 1);
 		}
 		elsif (($conf->{sys}{rhn_user}) && ($conf->{sys}{rhn_password}))
 		{
@@ -7466,15 +7466,15 @@ sub verify_os
 			# connection.
 			if ($conf->{sys}{internet_access})
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - This system does not appear to be registered with RHN and no RHN", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - This system does not appear to be registered with Red Hat and no Red Hat", 1);
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   credentials have been given. The install will likely fail if any", 1);
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   packages need to be installed and are not locally available.", 1);
 				sleep 2;
 			}
 			else
 			{
-				logger($conf, $THIS_FILE, __LINE__, "- This system will not be registered with RHN.", 1);
-				logger($conf, $THIS_FILE, __LINE__, "  RHN credentials not given and no Internet connection detected.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- This system will not be registered with Red Hat.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "  Red Hat credentials not given and no Internet connection detected.", 1);
 			}
 		}
 	}
@@ -9550,9 +9550,9 @@ SWITCHES
  --rhn <user:password>
 
 	When installing on a RHEL server, these credentials can be passed to
-	add the machine to yout RHN account. 
+	add the machine to yout Red Hat account. 
 	
-	NOTE: This uses Red Hat's subscription-manager, NOT the legacy RHN
+	NOTE: This uses Red Hat's subscription-manager, NOT the legacy Red Hat
 	      tools.
 
  --router-mode

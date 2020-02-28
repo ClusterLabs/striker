@@ -276,10 +276,10 @@
 		<key name="explain_0132"><![CDATA[Please review the build plan below and, if you're happy, press "<span class="button_reference">#!string!button_0053!#</span>".]]></key>
 		<key name="explain_0133"><![CDATA[If the storage is OK, but you want to remap the network, press "<span class="button_reference">#!string!button_0054!#</span>".]]></key>
 		<key name="explain_0134"><![CDATA[If the storage is not OK, please edit the install manifest by pressing "<span class="button_reference">#!string!button_0055!#</span>".]]></key>
-		<key name="explain_0135"><![CDATA[In order to access the Red Hat network to download packages, you must register your nodes against <a href="http://en.wikipedia.org/wiki/Red_Hat_Network" target="_new">RHN</a>.<br />You haven't yet, so you can enter your credentials below and we will register before installing packages.<br />Please note that this will consume a "<a href="http://www.sistina.com/rhel/add-ons/resilient_storage.html" target="_new">Resilient Storage</a>" and the "Optional" repository will be enabled per node.<br />If registration fails for some reason, the installer will try to proceed anyway.]]></key>
+		<key name="explain_0135"><![CDATA[In order to access the Red Hat network to download packages, you must register your nodes against <a href="http://en.wikipedia.org/wiki/Red_Hat_Network" target="_new">Red Hat</a>.<br />You haven't yet, so you can enter your credentials below and we will register before installing packages.<br />Please note that this will consume a "<a href="http://www.sistina.com/rhel/add-ons/resilient_storage.html" target="_new">Resilient Storage</a>" and the "Optional" repository will be enabled per node.<br />If registration fails for some reason, the installer will try to proceed anyway.]]></key>
 		<key name="explain_0136">#!free!#</key>
 		<key name="explain_0137"><![CDATA[The install is now beginning. Sanity checks will re-run, just to be safe.<br />Configuration will begin automatically after that.<br />Now is a good time to go have a <span class="code">$drink</span>.]]></key>
-		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
+		<key name="explain_0138"><![CDATA[The node(s) will now be registered with Red Hat.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139">#!free!#</key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
 		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to come back online.]]></key>
@@ -718,7 +718,7 @@
 		<key name="row_0234">OS Registration</key>
 		<key name="row_0235">Distribution Name</key>
 		<key name="row_0236">Registered?</key>
-		<key name="row_0237">RHN Credentials</key>
+		<key name="row_0237">Red Hat Credentials</key>
 		<key name="row_0238">User name</key>
 		<key name="row_0239">Password</key>
 		<key name="row_0240">Install Manifest</key>
@@ -1755,8 +1755,8 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0383"><![CDATA[I was asked to remap the network for a node I do not recognize.<br />(Sorry about that)]]></key>
-		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
-		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
+		<key name="message_0384"><![CDATA[Registration with Red Hat failed. The install will try to proceed, but may fail.<br />If it does, please check the Red Hat credentials you passed or manually register the nodes.]]></key>
+		<key name="message_0385">Red Hat registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
 		<key name="message_0387"><![CDATA[The size of the storage partitions on the nodes is not the same!<br />Node 1: [<span class="highlight_detail">#!variable!node1_name!#</span>] is: [<span class="highlight_detail">#!variable!node1_hr_size!#</span>] (<span class="highlight_detail">#!variable!node1_byte_size!#</span> bytes).<br />Node 2: [<span class="highlight_detail">#!variable!node2_name!#</span>] is: [<span class="highlight_detail">#!variable!node2_hr_size!#</span>] (<span class="highlight_detail">#!variable!node2_byte_size!#</span> bytes).<br />The smaller size of the two will be used on both nodes.]]></key>
 		<key name="message_0388"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!name!#</span>] #!string!brand_0003!# failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!anvils!#</span>] system(s) and [<span class="highlight_detail">#!variable!nodes!#</span>] node(s) remained.]]></key>
@@ -2131,7 +2131,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="log_0176">Created an extended partition on node: [#!variable!node!#], disk: [#!variable!disk!#].</key>
 		<key name="log_0177">Failed to a: [#!variable!type!#] partition for pool #!variable!pool!# on node: [#!variable!node!#], disk: [#!variable!disk!#], size: [#!variable!size!# (#!variable!hr_size!#)].</key>
 		<key name="log_0178">Successfully created a: [#!variable!type!#] partition for pool #!variable!pool!# on node: [#!variable!node!#], disk: [#!variable!disk!#], size: [#!variable!size!# (#!variable!hr_size!#)].</key>
-		<key name="log_0179">The user has skipped RHN checks.</key>
+		<key name="log_0179">The user has skipped Red Hat checks.</key>
 		<key name="log_0180">The iptables file has: [#!variable!lines!#] lines (the default) on node: [#!variable!node!#]. Reboot needed.</key>
 		<key name="log_0181">The iptables file has: [#!variable!lines!#] lines on node: [#!variable!node!#]. Reboot NOT needed.</key>
 		<key name="log_0182">The node: [#!variable!node!#] needs to reboot.</key>
@@ -2165,7 +2165,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="log_0210">Neither node has an existing 'cluster.conf', using the default generated one.</key>
 		<key name="log_0211">#!free!#</key>
 		<key name="log_0212">#!free!#</key>
-		<key name="log_0213">Is the node: [#!variable!node!#] registered on RHN?.</key>
+		<key name="log_0213">Is the node: [#!variable!node!#] registered on Red Hat?.</key>
 		<key name="log_0214">#!free!#</key>
 		<key name="log_0215">#!free!#</key>
 		<key name="log_0216">Server verified, creating it now.</key>

@@ -13574,7 +13574,7 @@ fi";
 	return(0);
 }
 
-# This will register the nodes with RHN, if needed. Otherwise it just returns without doing anything.
+# This will register the nodes with Red Hat, if needed. Otherwise it just returns without doing anything.
 sub register_with_rhn
 {
 	my $self      = shift;
@@ -13584,7 +13584,7 @@ sub register_with_rhn
 	
 	if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 	{
-		# User has skipped RHN check
+		# User has skipped Red Hat check
 		$an->Log->entry({log_level => 2, message_key => "log_0179", file => $THIS_FILE, line => __LINE__});
 		return(0);
 	}
@@ -13793,7 +13793,7 @@ sub register_node_with_rhn
 ".$an->data->{path}{'subscription-manager'}." repos --enable=rhel-6-server-optional-rpms && 
 ".$an->data->{path}{'subscription-manager'}." repos --enable=rhel-rs-for-rhel-6-server-rpms && 
 ".$an->data->{path}{'subscription-manager'}." repos --list-enabled";
-	# Exposes the RHN password, so log level 4.
+	# Exposes the Red Hat password, so log level 4.
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -14261,7 +14261,7 @@ sub run_new_install_manifest
 		# Back things up.
 		$an->InstallManifest->backup_files();
 		
-		# Register the nodes with RHN, if needed.
+		# Register the nodes with Red Hat, if needed.
 		$an->InstallManifest->register_with_rhn();
 		
 		# Configure the network
@@ -17220,7 +17220,7 @@ sub summarize_build_plan
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 			{
-				# User has disabled RHN checks/registration.
+				# User has disabled Red Hat checks/registration.
 				$say_node1_registered = "#!string!state_0102!#";
 				$enable_rhn           = 0;
 			}
@@ -17262,7 +17262,7 @@ sub summarize_build_plan
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 			{
-				# User has disabled RHN checks/registration.
+				# User has disabled Red Hat checks/registration.
 				$say_node2_registered = "#!string!state_0102!#";
 				$enable_rhn           = 0;
 			}
