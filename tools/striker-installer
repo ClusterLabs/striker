@@ -3013,12 +3013,12 @@ cd /root";
 	}
 	close $file_handle;
 	
-	my $shell_call = "
+	$shell_call = "
 cd ".$source_directory.";
 tar -cvzf ".$source_directory."/files/img.tar.gz ./img;
 cd /root";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5622,7 +5622,7 @@ LABEL generic-centos-striker
 	
 	# Copy the PXE menu background into place.
 	logger($conf, $THIS_FILE, __LINE__, "- Copying PXE server's wallpaper into place.", 1);
-	copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/striker/ISO/".$say_os."/6/Anvil/syslinux/splash.jpg", "/var/lib/tftpboot/efi64/");
+	copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/striker/ISO/".$say_os."/6/Anvil/syslinux/splash.jpg", "/var/lib/tftpboot/");
 	copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/striker/ISO/".$say_os."/6/Anvil/EFI/BOOT/pxe_voyager1.xpm.gz", "/var/lib/tftpboot/efi64/");
 
 	# Setup UEFI PXE booting.
@@ -5656,6 +5656,17 @@ LABEL generic-centos-striker
 	}
 	# Make sure the 'efi64/bootx64.efi' file is chmod 755
 	chmod 0755, $efi_target;
+
+	my $bios_vmlinuz = $conf->{directory}{pxelinux_boot}."/".$os_short."/x86_64/vmlinuz";
+	my $bios_initdr  = $conf->{directory}{pxelinux_boot}."/".$os_short."/x86_64/initrd.img";
+	if (not -e $bios_vmlinuz)
+	{
+		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/vmlinuz", $bios_vmlinuz);
+	}
+	if (not -e $efi_initdr)
+	{
+		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/initrd.img", $bios_initdr);
+	}
 
 	my $efi_vmlinuz = $conf->{directory}{pxelinux_efi}."/vmlinuz";
 	my $efi_initdr  = $conf->{directory}{pxelinux_efi}."/initrd.img";
