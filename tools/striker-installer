@@ -5658,25 +5658,25 @@ LABEL generic-centos-striker
 	chmod 0755, $efi_target;
 
 	my $bios_vmlinuz = $conf->{directory}{pxelinux_boot}."/".$os_short."/x86_64/vmlinuz";
-	my $bios_initdr  = $conf->{directory}{pxelinux_boot}."/".$os_short."/x86_64/initrd.img";
+	my $bios_initrd  = $conf->{directory}{pxelinux_boot}."/".$os_short."/x86_64/initrd.img";
 	if (not -e $bios_vmlinuz)
 	{
 		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/vmlinuz", $bios_vmlinuz);
 	}
-	if (not -e $efi_initdr)
+	if (not -e $bios_initrd)
 	{
-		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/initrd.img", $bios_initdr);
+		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/initrd.img", $bios_initrd);
 	}
 
 	my $efi_vmlinuz = $conf->{directory}{pxelinux_efi}."/vmlinuz";
-	my $efi_initdr  = $conf->{directory}{pxelinux_efi}."/initrd.img";
+	my $efi_initrd  = $conf->{directory}{pxelinux_efi}."/initrd.img";
 	if (not -e $efi_vmlinuz)
 	{
 		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/vmlinuz", $efi_vmlinuz);
 	}
-	if (not -e $efi_initdr)
+	if (not -e $efi_initrd)
 	{
-		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/initrd.img", $efi_initdr);
+		copy_file($conf, "/var/www/html/".$os_short."/x86_64/img/images/pxeboot/initrd.img", $efi_initrd);
 	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
