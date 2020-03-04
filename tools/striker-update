@@ -4557,7 +4557,7 @@ sub get_latest_version
 		}
 		if ($line =~ /^master:(http.*)$/)
 		{
-			if ($an->data->{switches}{master})
+			if ($an->data->{switches}{branch} eq "master")
 			{
 				$an->data->{url}{striker_branch} = $1;
 			}
