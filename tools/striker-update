@@ -332,8 +332,8 @@ elsif ((($an->data->{switches}{master}) or ($an->data->{switches}{branch})) && (
 
 	$an->data->{url}{striker_branch} = $an->data->{url}{striker_source_prefix} . $an->data->{switches}{branch};
 
-	print "We will download the latest source code from GitHub's [" . $an->data->{switches}{branch} . "] branch\n";
-	print "by accessing URL [" . $an->data->{url}{striker_branch} . "]\n";
+	print "We will download the latest source code from GitHub's [".$an->data->{switches}{branch}."] branch\n";
+	print "by accessing URL [".$an->data->{url}{striker_branch}."]\n";
 	print "- NOTE: This should only be done on test and development platforms!\n\n";
 }
 else
