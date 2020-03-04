@@ -317,13 +317,15 @@ else
 	$show_anvil_warning = 0;
 }
 
+my $is_branch_switch_set = (($an->data->{switches}{branch}) && ($an->data->{switches}{branch} ne "#!SET!#"));
+
 if ($an->data->{switches}{'no-refresh'})
 {
 	print "We will NOT refresh our local copy of the Striker source code. If it exists,\n";
 	print "we will use what is already cached in:\n";
 	print "- Striker: [".$an->data->{path}{updates}{striker}."]\n\n";
 }
-elsif ((($an->data->{switches}{master}) or ($an->data->{switches}{branch})) && (not $an->data->{switches}{offline}))
+elsif (($an->data->{switches}{master} or $is_branch_switch_set) && (not $an->data->{switches}{offline}))
 {
 	if ($an->data->{switches}{master})
 	{
