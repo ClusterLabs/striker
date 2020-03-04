@@ -443,7 +443,7 @@ if (not $an->data->{sys}{offline})
 			}
 			else
 			{
-				print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
+				print "\n[ Warning ] - ".$an->data->{switches}{branch}." branch requested. This should be used by developers and\n";
 				print "              testers only. Please don't use this in production!\n\n";
 				$an->data->{sys}{install_master} = 1;
 				sleep 3;
