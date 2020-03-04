@@ -4892,10 +4892,16 @@ SWITCHES
 
 	Show this dialogue and exit.
 
+ --branch <branch_name>
+	This will upgrade to a version identified by the given branch name on
+	GitHub: https://github.com/ClusterLabs/striker
+
  --master
 
 	This will upgrade to the latest (master branch) version available on 
 	GitHub: https://github.com/ClusterLabs/striker
+
+	This is equivalent to '--branch master'
 	
 	### WARNING: This is only recommended for developers or testers. Do not
 	###          upgrade to master on production systems!
