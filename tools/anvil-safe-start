@@ -1299,14 +1299,23 @@ sub start_clvmd
 		{
 			# Needs to be activated.
 			my $logical_volume = $1;
+			my $vg_name        = ($logical_volume =~ /\/dev\/(.*?)\//)[0];
 			my $variables      = {
 				logical_volume => $logical_volume, 
 				node           => $peer_name, 
 			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "logical_volume", value1 => $logical_volume, 
+				name2 => "vg_name",        value2 => $vg_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_log_0021", variables => $variables})."\n";
 			
-			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
+			my $shell_call = $an->data->{path}{pvscan}."; ".$an->data->{path}{vgscan}."; ".$an->data->{path}{lvscan}."; ".$an->data->{path}{vgchange}." -ay $vg_name";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
 				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
@@ -1341,14 +1350,20 @@ sub start_clvmd
 		{
 			# Needs to be activated.
 			my $logical_volume = $1;
+			my $vg_name        = ($logical_volume =~ /\/dev\/(.*?)\//)[0];
 			my $variables      = {
 				logical_volume => $logical_volume, 
 				node           => $local_name, 
 			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "logical_volume", value1 => $logical_volume, 
+				name2 => "vg_name",        value2 => $vg_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_log_0021", variables => $variables})."\n";
 			
-			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
+			my $shell_call = $an->data->{path}{pvscan}."; ".$an->data->{path}{vgscan}."; ".$an->data->{path}{lvscan}."; ".$an->data->{path}{vgchange}." -ay $vg_name";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});

@@ -12803,7 +12803,6 @@ sub populate_known_hosts_on_node
 	my $ok = 1;
 	foreach my $name (@{$an->data->{sys}{node_names}})
 	{
-		### TODO: How safe/stupid is this?
 		# If a node is being replaced, the old entries will no longer match. So as a precaution, 
 		# existing keys are removed if found.
 		next if not $name;

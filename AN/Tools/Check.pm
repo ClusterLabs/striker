@@ -492,8 +492,8 @@ sub drbd_resource
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $return = [];
-	my $shell_call = $an->data->{path}{'drbd-overview'};
+	my $return     = [];
+	my $shell_call = $an->data->{path}{'drbdadm'}." dump";
 	if ($target)
 	{
 		# Working on the peer.
@@ -527,44 +527,65 @@ sub drbd_resource
 		}
 		close $file_handle;
 	}
-
-	$state->{resource_is_up} = 0;
+	my $in_resource    = 0;
+	my $in_local       = 0;
+	my $short_hostname = $an->short_hostname();
 	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /(\d+):$resource\/\d+ (.*?) (.*?)\/(.*?) (.*?)\/(.*)$/)
+		if ($line =~ /resource (.*) {/)
 		{
-			$state->{minor_number}     = $1;
-			$state->{connection_state} = $2;
-			$state->{this_role}        = $3;
-			$state->{peer_role}        = $4;
-			$state->{this_disk_state}  = $5;
-			$state->{peer_disk_state}  = $6;
-			$state->{resource_is_up}   = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "resource",         value1 => $resource, 
-				name2 => "minor_number",     value2 => $state->{minor_number}, 
-				name3 => "connection_state", value3 => $state->{connection_state}, 
-				name4 => "this_role",        value4 => $state->{this_role}, 
-				name5 => "peer_role",        value5 => $state->{peer_role}, 
-				name6 => "this_disk_state",  value6 => $state->{this_disk_state}, 
-				name7 => "peer_disk_state",  value7 => $state->{peer_disk_state}, 
-				name8 => "resource_is_up",   value8 => $state->{resource_is_up}, 
+			my $this_resource = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_resource", value1 => $this_resource, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# Record the detail for when we parse /proc/drbd
-			$an->data->{drbd}{$resource}{minor_number} = $state->{minor_number};
+			if ($this_resource eq $resource)
+			{
+				$in_resource = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_resource", value1 => $in_resource, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		next if not $in_resource;
+		if ($line =~ /on (.*?) {/)
+		{
+			my $this_host =  $1;
+			   $this_host =~ s/^(.*?)\..*/$1/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "short_hostname", value1 => $short_hostname, 
+				name2 => "this_host",      value2 => $this_host, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_host eq $short_hostname)
+			{
+				$in_local = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_local", value1 => $in_local, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		next if not $in_local;
+		if ($line =~ /minor (\d+);/)
+		{
+			$state->{minor_number}                     = $1;
+			$an->data->{drbd}{$resource}{minor_number} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "state->{minor_number}",           value1 => $state->{minor_number}, 
+				name2 => "drbd::${resource}::minor_number", value2 => $an->data->{drbd}{$resource}{minor_number}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
 		}
 	}
 	
 	# Read in /proc/drbd
-	$return = [];
+	$return     = [];
 	$shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 	if ($target)
 	{
@@ -599,28 +620,42 @@ sub drbd_resource
 		}
 		close $file_handle;
 	}
-	my $in_resource = "";
+	
+	my $this_minor_number = $an->data->{drbd}{$resource}{minor_number};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "this_minor_number", value1 => $this_minor_number, 
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /^(\d+): cs/)
+		if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) /)
 		{
-			my $minor_number = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "minor_number", value1 => $minor_number, 
+			my $minor_number     = $1;
+			my $connection_state = $2;
+			my $this_role        = $3;
+			my $peer_role        = $4;
+			my $this_disk_state  = $5;
+			my $peer_disk_state  = $6;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "minor_number",     value1 => $minor_number, 
+				name2 => "connection_state", value2 => $connection_state, 
+				name3 => "this_role",        value3 => $this_role, 
+				name4 => "peer_role",        value4 => $peer_role, 
+				name5 => "this_disk_state",  value5 => $this_disk_state, 
+				name6 => "peer_disk_state",  value6 => $peer_disk_state, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Find the resource name.
 			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}})
 			{
 				my $this_minor_number = $an->data->{drbd}{$resource}{minor_number};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "resource",          value1 => $resource, 
 					name2 => "this_minor_number", value2 => $this_minor_number, 
 					name3 => "minor_number",      value3 => $minor_number, 
@@ -628,9 +663,28 @@ sub drbd_resource
 				if ($this_minor_number eq $minor_number)
 				{
 					# Got it.
-					$in_resource = $resource;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "in_resource", value1 => $in_resource, 
+					$in_resource               = $resource;
+					$state->{minor_number}     = $minor_number;
+					$state->{connection_state} = $connection_state; 
+					$state->{this_role}        = $this_role;
+					$state->{peer_role}        = $peer_role;
+					$state->{this_disk_state}  = $this_disk_state;
+					$state->{peer_disk_state}  = $peer_disk_state;
+					$state->{resource_is_up}   = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+						name1 => "in_resource",               value1 => $in_resource, 
+						name2 => "state->{minor_number}",     value2 => $state->{minor_number}, 
+						name3 => "state->{connection_state}", value3 => $state->{connection_state}, 
+						name4 => "state->{this_role}",        value4 => $state->{this_role},
+						name5 => "state->{peer_role}",        value5 => $state->{peer_role},
+						name6 => "state->{this_disk_state}",  value6 => $state->{this_disk_state},
+						name7 => "state->{peer_disk_state}",  value7 => $state->{peer_disk_state},
+						name8 => "state->{resource_is_up}",   value8 => $state->{resource_is_up},
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{drbd}{$resource}{minor_number} = $state->{minor_number};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "drbd::${resource}::minor_number", value1 => $an->data->{drbd}{$resource}{minor_number}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
@@ -641,14 +695,14 @@ sub drbd_resource
 			# This just checks to clear the resource if we missed a regex check and we've hit a 
 			# new resource. It should never actually be hit.
 			$in_resource = "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_resource", value1 => $in_resource, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Only care if this is the resource the user asked for.
 		next if not $in_resource;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "resource",    value1 => $resource, 
 			name2 => "in_resource", value2 => $in_resource, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -657,7 +711,7 @@ sub drbd_resource
 		if ($line =~ /sync'ed: (.*?)%/)
 		{
 			$state->{percent_synced} = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "state->{percent_synced}", value1 => $state->{percent_synced}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -668,7 +722,7 @@ sub drbd_resource
 			my $seconds        = $3;
 			my $total_seconds  = (($hours * 3600) + ($minutes * 60) + $seconds);
 			$state->{sync_eta} = $total_seconds;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "hours",             value1 => $hours, 
 				name2 => "minutes",           value2 => $minutes, 
 				name3 => "seconds",           value3 => $seconds, 
@@ -677,7 +731,7 @@ sub drbd_resource
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
