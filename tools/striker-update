@@ -142,7 +142,7 @@ my $an = AN::Tools->new({
 			# cases, the downloaded file will be saved as 'striker_zip_file'.
 			striker_default			=>	"https://github.com/ClusterLabs/striker/archive/v2.0.8.zip",
 			striker_latest			=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
-			striker_source_prefix	=>	"https://codeload.github.com/Tsu-ba-me/alteeve-m2/zip/",
+			striker_source_prefix	=>	"https://codeload.github.com/ClusterLabs/striker/zip/",
 			support					=>	"https://alteeve.com/w/Support",
 			ping_targets			=>	"8.8.8.8,google.com,redhat.com,alteeve.com",
 		},
