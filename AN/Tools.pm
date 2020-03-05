@@ -1079,7 +1079,7 @@ sub _set_defaults
 	$an->data->{sys}{username}                             = getpwuid( $< );
 	# If a user wants to use spice + qxl for video in VMs, set this to '1'. NOTE: This disables web-based VNC!
 	$an->data->{sys}{use_spice_graphics}                   = 1;
-	$an->data->{sys}{version}                              = "2.0.7";
+	$an->data->{sys}{version}                              = "2.0.8";
 	# Adds: [--disablerepo='*' --enablerepo='striker*'] if
 	# no internet connection found.
 	$an->data->{sys}{yum_switches}                         = "-y";
@@ -1153,7 +1153,6 @@ sub _set_paths
 	$an->data->{path}{df}                     = "/bin/df";
 	$an->data->{path}{dmesg}                  = "/bin/dmesage";
 	$an->data->{path}{dmidecode}              = "/usr/sbin/dmidecode";
-	$an->data->{path}{'drbd-overview'}        = "/usr/sbin/drbd-overview";
 	$an->data->{path}{drbdadm}                = "/sbin/drbdadm";
 	$an->data->{path}{drbdmeta}               = "/sbin/drbdmeta";
 	$an->data->{path}{echo}                   = "/bin/echo";
