@@ -1053,7 +1053,7 @@
 		<key name="state_0077"><![CDATA[Can't ping peer on <a href="#!string!url_0005!#" target="_new">#!string!brand_0006!#</a>]]></key>
 		<key name="state_0078">Already running</key>
 		<key name="state_0079">Failed to read or generate RSA key</key>
-		<key name="state_0080"><![CDATA[Failed to populate: <span class="highlight_detail">known_hosts</span>]]></key>
+		<key name="state_0080"><![CDATA[Failed to populate: <span class="highlight_detail">known_hosts</span>.<br />Is there an IP conflict?]]></key>
 		<key name="state_0081"><![CDATA[Failed to populate: <span class="highlight_detail">authorized_keys</span>]]></key>
 		<key name="state_0082"><![CDATA[Testing <a href="https://alteeve.com/w/AN!Cluster_Tutorial_2#Concept.3B_Fencing" target="_new">fencing</span> failed! The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote><br />Please check your fence device(s) to ensure they've been configured properly.]]></key>
 		<key name="state_0083"><![CDATA[Failed to '<span class="highlight_detail">attach</span>' a resource. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>

@@ -12926,6 +12926,9 @@ fi;";
 					
 					# OK, now we give up
 					$ok = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "ok", value1 => $ok,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
