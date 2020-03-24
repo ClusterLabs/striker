@@ -1025,7 +1025,11 @@ sub compile_network_drivers
 	# First, if setup where we'll find the ASIX driver.
 	my $driver_directory = "/var/www/html/".$conf->{pxe}{centos}{short_name}."/x86_64/img/Tools/ASIX";
 	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 2);
-	if ($conf->{sys}{is_rhel})
+	if ($conf->{switches}{source})
+	{
+		$driver_directory = $conf->{switches}{source}."/Tools/ASIX";
+	}
+	elsif ($conf->{sys}{is_rhel})
 	{
 		$driver_directory = "/var/www/html/".$conf->{pxe}{rhel}{short_name}."/x86_64/img/Tools/ASIX";
 	}
@@ -1083,7 +1087,7 @@ sub compile_network_drivers
 		
 		my $driver_file = "";
 		my $driver_path = "";
-		logger($conf, $THIS_FILE, __LINE__, "driver_loaded: [$driver_loaded], driver_directory: [$driver_directory].", 3);
+		logger($conf, $THIS_FILE, __LINE__, "driver_loaded: [$driver_loaded], driver_directory: [$driver_directory].", 2);
 		if (not $driver_loaded)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The driver is not loaded.", 1);
@@ -1312,6 +1316,27 @@ sub write_driver_update_script
 	}
 	logger($conf, $THIS_FILE, __LINE__, "driver_directory: [$driver_directory].", 2);
 	
+	my $asix_driver = $driver_directory."/".$conf->{sys}{asix_driver}.".zip";
+	
+	# If we're running with '--source <path>', we need to do a few extra things first.
+	if ($conf->{switches}{source})
+	{
+		# Make sure the files we're going to use are in place.
+		if (not -e $conf->{directory}{striker_config})
+		{
+			mkdir $conf->{directory}{striker_config} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_config}."]. The error was: $!\n";
+		}
+		
+		if (not -e $conf->{directory}{striker_tools})
+		{
+			mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_tools}."]. The error was: $!\n";
+		}
+		
+		# Copy the driver out of the ISO directory.
+		$asix_driver = $conf->{switches}{source}."/Tools/ASIX/".$conf->{sys}{asix_driver}.".zip";
+	}
+	logger($conf, $THIS_FILE, __LINE__, "asix_driver: [".$asix_driver."].", 2);
+	
 	my $script = "
 #!/bin/bash
 # This is a dirty little program to recompile the Siig (ASIX-based) USB3 to Gbit
@@ -1320,7 +1345,7 @@ sub write_driver_update_script
 
 DATADIR=\"".$conf->{directory}{striker_config}."\";
 DATAFILE=\"".$conf->{path}{last_kernel}."\";
-ASIXDRIVER=\"".$driver_directory."/".$conf->{sys}{asix_driver}.".zip\";
+ASIXDRIVER=\"".$asix_driver."\";
 ASIXDIRECTORY=\"/tmp/".$conf->{sys}{asix_driver}."/\";
 RECOMPILE=0;
 THISFILE=\$(basename \"\$0\");
@@ -1345,7 +1370,6 @@ then
     else
         logger -t \$THISFILE \"Data file does not exist. Will create it and recompile.\"
         RECOMPILE=1;
-        uname -r > \$DATAFILE
     fi
 else
     logger -t \$THISFILE \"Data directorty: [\$DATADIR] doesn't exist, not checking drivers.\"
@@ -1361,7 +1385,7 @@ then
         if [ -e \$ASIXDRIVER ];
         then
             logger -t \$THISFILE \"Driver found, extracting.\"
-            unzip -f \$ASIXDRIVER -d /tmp/ >> /var/log/messages
+            unzip -o \$ASIXDRIVER -d /tmp/ >> /var/log/messages
             if [ -e \"\${ASIXDIRECTORY}/Makefile\" ];
             then
                 logger -t \$THISFILE \"Drivers extracted, compiling now.\"
@@ -1373,6 +1397,7 @@ then
                 logger -t \$THISFILE \"Updating the last seen kernel version\"
                 uname -r > \$DATAFILE
                 logger -t \$THISFILE \"Done!\"
+                uname -r > \$DATAFILE
             else
                 logger -t \$THISFILE \"Failed to extract the drivers. Unable to proceed.\"
             fi
