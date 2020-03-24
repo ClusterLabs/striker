@@ -95,6 +95,16 @@ if ($conf->{switches}{summary})
 # Make sure all NICs are up. If any aren't, start them.
 start_all_nics($conf);
 
+# Exit if 'start-only'
+if ($conf->{switches}{'start-only'})
+{
+	if ($conf->{switches}{summary})
+	{
+		print_summary($conf);
+	}
+	exit(0);
+}
+
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
 until(select_nics($conf))
@@ -210,7 +220,7 @@ sub print_summary
 	foreach my $this_nic (sort {$a cmp $b} keys %{$conf->{nic}})
 	{
 		next if $conf->{nic}{$this_nic}{mac} eq "00:00:00:00:00:00";
-		print "nic=$this_nic,,mac=$conf->{nic}{$this_nic}{mac}\n";
+		print "nic=".$this_nic.",,mac=".$conf->{nic}{$this_nic}{mac}."\n";
 	}
 	
 	return(0);
@@ -224,7 +234,7 @@ sub start_all_nics
 	# This can take a minute, so tell the user what's going on.
 	if ($conf->{script})
 	{
-		print "#!string!script_0025!#\n";
+		print "#!string!script_0025!#\n" if not $conf->{switches}{'start-only'};
 	}
 	else
 	{
@@ -799,6 +809,11 @@ SWITCHES
 	This tells the program that it is being called by a script. It alters
 	the output to use string keys and variable replacement values for
 	translating into other languages.
+
+ --start-only
+
+	This checks for any NICs that are not yet started and starts them.
+	Nothing further is done.
 
  --summary
 

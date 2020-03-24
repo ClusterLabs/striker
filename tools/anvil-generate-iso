@@ -519,7 +519,7 @@ sub generate_kickstart_body
 	my $peer_ip        = $number eq "1" ? $conf->{sys}{ks}{striker_bcn}.".2" : $conf->{sys}{ks}{striker_bcn}.".1";
 	my $my_bcn_ip      = $number eq "1" ? $conf->{sys}{ks}{striker_bcn}.".1" : $conf->{sys}{ks}{striker_bcn}.".2";
 	my $my_ifn_ip      = $number eq "1" ? $conf->{sys}{ks}{striker_ifn}.".1" : $conf->{sys}{ks}{striker_ifn}.".2";
-	my $dhcp_range     = $number eq "1" ? "10.20.10.200:10.20.10.209" : "10.20.10.210:10.20.10.219";
+	my $dhcp_range     = "10.20.7.200:10.20.7.230";
 	my $selinux        = $machine eq "striker" ? "permissive" : "enforcing";
 	my $packages       = get_packages($conf, $machine);
 	my $common_post    = get_common_post($conf);

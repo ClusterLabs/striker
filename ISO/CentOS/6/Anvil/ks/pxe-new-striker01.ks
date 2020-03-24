@@ -308,7 +308,7 @@ cat > /root/example_striker-installer.txt << EOF
  --gui \\
  --peer-dashboard hostname=an-striker02.alteeve.com,bcn_ip=10.20.4.2 \\
  --router-mode \\
- -p 10.20.10.200:10.20.10.209 \\
+ -p 10.20.7.200:10.20.7.230 \\
  -d git
 EOF
 

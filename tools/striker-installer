@@ -5293,7 +5293,7 @@ cat > /root/striker-installer.example << EOF
  -u \"admin:Initial1\" \\\\
  -i 10.255.4.".$number."/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\\\
  -b 10.20.4.".$number."/16 \\\\
- -p 10.20.10.200:10.20.10.220 \\\\
+ -p 10.20.7.200:10.20.7.230 \\\\
  --peer-dashboard hostname=".$conf->{sys}{prefix}."-striker0".$peer_number.".".$conf->{sys}{domain}.",bcn_ip=10.20.4.".$peer_number." \\\\
 ";
 		# Use '--rhn' on RHEL only.
@@ -5855,8 +5855,6 @@ sub configure_dhcp
 		exit(27);
 	}
 	
-	### TODO: I have no checks yet to verify that the lease range is in the
-	###       BCN subnet... Fix that.
 	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
 	   $domain_name = "localdomain" if not $domain_name;
 	my $bcn_network = "";
@@ -8705,8 +8703,6 @@ sub sanity_check_switches
 	}
 	
 	# Check the DHCP/PXE stuff
-	### TODO: Add some logic to make sure the DHCP lease range matches
-	###       either the BCN or IFN subnet
 	if ($conf->{switches}{p})
 	{
 		($bad_value) = sanity_check_dhcp($conf, $bad_value);
@@ -9654,7 +9650,7 @@ Normal install
  ./striker-installer -c "Alteeve's Niche\!" \
                   -n an-striker01.alteeve.com \
                   -u "admin:secret password" \
-                  -p 10.20.10.200:10.20.10.220 \
+                  -p 10.20.7.200:10.20.7.230 \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
@@ -9664,7 +9660,7 @@ Developer install, using local copies of ISOs:
                   -n an-striker01.alteeve.com \
                   -d git \
                   -u "admin:secret password" \
-                  -p 10.20.10.200:10.20.10.220 \
+                  -p 10.20.7.200:10.20.7.230 \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
