@@ -462,7 +462,7 @@ sub _display_node_health
 				my $logical_disk_state_class = "highlight_good";
 				my $say_missing    = "";
 				my $allow_offline  = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)

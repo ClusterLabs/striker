@@ -1,0 +1,987 @@
+#!/usr/bin/perl
+# 
+# This is a simple tool that shows how much system resources are available and how much is used by servers.
+# 
+# This version works without AN::Tools.
+# 
+# Exit Codes;
+# 0  = OK
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use Math::BigInt;
+use XML::Simple;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $conf = {
+	debug => 1,
+};
+
+gather_data($conf);
+
+pretty_report($conf);
+
+exit(0);
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# Show the results for a human to read.
+sub pretty_report
+{
+	my ($conf) = @_;
+	
+	my $name_length   = 0;
+	my $source_length = 0;
+	my $cpu_length    = 0;
+	
+	my $say_cpu         = "CPU";
+	my $say_storage     = "Storage";
+	my $say_network     = "Network";
+	my $say_server_name = "Server Name";
+	my $say_ram         = "RAM";
+	my $say_cores       = "Cores";
+	my $say_type        = "Type";
+	my $say_bus         = "Bus";
+	my $say_target      = "Target";
+	my $say_size        = "Size";
+	my $say_source      = "Source";
+	my $say_mac         = "MAC";
+	my $say_model       = "Model";
+	my $say_bridge      = "Bridge";
+	
+	my $length_server_name    = length($say_server_name);
+	my $length_ram            = length($say_ram);
+	my $length_cpu_cores      = length($say_cores);
+	my $length_cpu_type       = length($say_type);
+	my $length_storage_type   = length($say_type);
+	my $length_storage_bus    = length($say_bus);
+	my $length_storage_target = length($say_target);
+	my $length_storage_size   = length($say_size);
+	my $length_storage_source = length($say_source);
+	my $length_network_mac    = length($say_mac);
+	my $length_network_model  = length($say_model);
+	my $length_network_bridge = length($say_bridge);
+	
+	# The first pass figures out maximum lengths and prepares the arrays.
+	foreach my $name (sort {$a cmp $b} keys %{$conf->{server}})
+	{
+		
+		my $ram   = hr_size($conf, $conf->{server}{$name}{ram});
+		my $cores = $conf->{server}{$name}{cpu}{cores};
+		my $type  = $conf->{server}{$name}{cpu}{mode};
+		
+		if (length($name)  > $length_server_name) { $length_server_name = length($name);  }
+		if (length($ram)   > $length_ram)         { $length_ram         = length($ram);   }
+		if (length($cores) > $length_cpu_cores)   { $length_cpu_cores  = length($cores); }
+		if (length($type)  > $length_cpu_type)    { $length_cpu_type   = length($type);  }
+		
+		$conf->{server}{$name}{disk_array} = [];
+		$conf->{server}{$name}{nic_array}  = [];
+		foreach my $device_type (sort {$b cmp $a} keys %{$conf->{server}{$name}{block}})
+		{
+			foreach my $guest_device (sort {$a cmp $b} keys %{$conf->{server}{$name}{block}{$device_type}})
+			{
+				my $bus    = $conf->{server}{$name}{block}{$device_type}{$guest_device}{bus};
+				my $size   = hr_size($conf, $conf->{server}{$name}{block}{$device_type}{$guest_device}{size});
+				my $source = $conf->{server}{$name}{block}{$device_type}{$guest_device}{source};
+				if (length($device_type)  > $length_storage_type)   { $length_storage_type   = length($device_type);  }
+				if (length($bus)          > $length_storage_bus)    { $length_storage_bus    = length($bus);          }
+				if (length($guest_device) > $length_storage_target) { $length_storage_target = length($guest_device); }
+				if (length($size)         > $length_storage_size)   { $length_storage_size   = length($size);         }
+				if (length($source)       > $length_storage_source) { $length_storage_source = length($source);       }
+				#print "server: [$name], type: [$device_type ($length_storage_type)], guest device: [$guest_device ($length_storage_target)], bus: [$bus ($length_storage_bus)], size: [$size ($length_storage_size)], source: [$source ($length_storage_source)]\n";
+				
+				# Store the MAC, the store the hash reference.
+				$conf->{server}{$name}{block}{$device_type}{$guest_device}{size}         = $size;
+				$conf->{server}{$name}{block}{$device_type}{$guest_device}{device_type}  = $device_type;
+				$conf->{server}{$name}{block}{$device_type}{$guest_device}{guest_device} = $guest_device;
+				push @{$conf->{server}{$name}{disk_array}}, $conf->{server}{$name}{block}{$device_type}{$guest_device};
+			}
+		}
+		foreach my $mac (sort {$a cmp $b} keys %{$conf->{server}{$name}{network}})
+		{
+			my $model  = $conf->{server}{$name}{network}{$mac}{model};
+			my $bridge = $conf->{server}{$name}{network}{$mac}{bridge};
+			if (length($mac)    > $length_network_mac)    { $length_network_mac    = length($mac);    }
+			if (length($model)  > $length_network_model)  { $length_network_model  = length($model);  }
+			if (length($bridge) > $length_network_bridge) { $length_network_bridge = length($bridge); }
+			
+			# Store the MAC, the store the hash reference.
+			$conf->{server}{$name}{network}{$mac}{mac} = $mac;
+			push @{$conf->{server}{$name}{nic_array}}, $conf->{server}{$name}{network}{$mac};
+		}
+	}
+	
+	# Now display;
+	my $total_length = 2 + $length_server_name + 3 + $length_ram + 3 + $length_cpu_cores + 3 + $length_cpu_type + 3 + $length_storage_type + 3 + $length_storage_bus + 3 + $length_storage_target + 3 + $length_storage_size + 3 + $length_storage_source + 3 + $length_network_mac + 3 + $length_network_model + 3 + $length_network_bridge + 2;
+	print " "; for (0..($total_length - 3)) { print "_"; } print " \n";
+	
+	print "| ".sprintf("%-${length_server_name}s", "")."   ".sprintf("%-${length_ram}s", "")." | -=] ".sprintf("%-".($length_cpu_cores + $length_cpu_type - 1)."s", $say_cpu)." | -=] ".sprintf("%-".($length_storage_type + $length_storage_bus + $length_storage_target + $length_storage_size + $length_storage_source + 8)."s", $say_storage)." | -=] ".sprintf("%-".($length_network_mac + $length_network_model + $length_network_bridge + 2)."s", $say_network)." |\n";
+	
+	print "| ".sprintf("%-${length_server_name}s", $say_server_name)." | ".sprintf("%-${length_ram}s", $say_ram)." | ".sprintf("%-${length_cpu_cores}s", $say_cores)." | ".sprintf("%-${length_cpu_type}s", $say_type)." | ".sprintf("%-${length_storage_type}s", $say_type)." | ".sprintf("%-${length_storage_bus}s", $say_bus)." | ".sprintf("%-${length_storage_target}s", $say_target)." | ".sprintf("%-${length_storage_size}s", $say_size)." | ".sprintf("%-${length_storage_source}s", $say_source)." | ".sprintf("%-${length_network_mac}s", $say_mac)." | ".sprintf("%-${length_network_model}s", $say_model)." | ".sprintf("%-${length_network_bridge}s", $say_bridge)." |\n";
+	
+	my $break_line = "+-".sprintf("%0${length_server_name}d", 0)."-+-".sprintf("%0${length_ram}d", 0)."-+-".sprintf("%0${length_cpu_cores}d", 0)."-+-".sprintf("%0${length_cpu_type}d", 0)."-+-".sprintf("%0${length_storage_type}d", 0)."-+-".sprintf("%0${length_storage_bus}d", 0)."-+-".sprintf("%0${length_storage_target}d", 0)."-+-".sprintf("%0${length_storage_size}d", 0)."-+-".sprintf("%0${length_storage_source}d", 0)."-+-".sprintf("%0${length_network_mac}d", 0)."-+-".sprintf("%0${length_network_model}d", 0)."-+-".sprintf("%0${length_network_bridge}d", 0)."-+";
+	   $break_line =~ s/0/-/g;
+	foreach my $name (sort {$a cmp $b} keys %{$conf->{server}})
+	{
+		print $break_line."\n";
+		my $ram   = hr_size($conf, $conf->{server}{$name}{ram});
+		my $cores = $conf->{server}{$name}{cpu}{cores};
+		my $type  = $conf->{server}{$name}{cpu}{mode};
+		
+		# How many lines?
+		my $disk_lines = @{$conf->{server}{$name}{disk_array}};
+		my $nic_lines  = @{$conf->{server}{$name}{nic_array}};
+		my $lines      = $disk_lines > $nic_lines ? $disk_lines : $nic_lines;
+		
+		my $disk_hash = $conf->{server}{$name}{disk_array}->[0];
+		my $nic_hash  = $conf->{server}{$name}{nic_array}->[0];
+		
+		print "| ".sprintf("%-${length_server_name}s", $name)." | ".sprintf("%-${length_ram}s", $ram)." | ".sprintf("%-${length_cpu_cores}s", $cores)." | ".sprintf("%-${length_cpu_type}s", $type)." | ".sprintf("%-${length_storage_type}s", $disk_hash->{device_type})." | ".sprintf("%-${length_storage_bus}s", $disk_hash->{bus})." | ".sprintf("%-${length_storage_target}s", $disk_hash->{guest_device})." | ".sprintf("%-${length_storage_size}s", $disk_hash->{size})." | ".sprintf("%-${length_storage_source}s", $disk_hash->{source})." | ".sprintf("%-${length_network_mac}s", $nic_hash->{mac})." | ".sprintf("%-${length_network_model}s", $nic_hash->{model})." | ".sprintf("%-${length_network_bridge}s", $nic_hash->{bridge})." |\n";
+		for (my $i = 1; $i < $lines; $i++)
+		{
+			$disk_hash = defined $conf->{server}{$name}{disk_array}->[$i] ? $conf->{server}{$name}{disk_array}->[$i] : {};
+			$nic_hash  = defined $conf->{server}{$name}{nic_array}->[$i]  ? $conf->{server}{$name}{nic_array}->[$i]  : {};
+			
+			$disk_hash->{device_type}  = "" if not defined $disk_hash->{device_type};
+			$disk_hash->{bus}          = "" if not defined $disk_hash->{bus};
+			$disk_hash->{guest_device} = "" if not defined $disk_hash->{guest_device};
+			$disk_hash->{size}         = "" if not defined $disk_hash->{size};
+			$disk_hash->{source}       = "" if not defined $disk_hash->{source};
+			$nic_hash->{mac}           = "" if not defined $nic_hash->{mac};
+			$nic_hash->{model}         = "" if not defined $nic_hash->{model};
+			$nic_hash->{bridge}        = "" if not defined $nic_hash->{bridge};
+			print "| ".sprintf("%-${length_server_name}s", "")." | ".sprintf("%-${length_ram}s", "")." | ".sprintf("%-${length_cpu_cores}s", "")." | ".sprintf("%-${length_cpu_type}s", $type)." | ".sprintf("%-${length_storage_type}s", $disk_hash->{device_type})." | ".sprintf("%-${length_storage_bus}s", $disk_hash->{bus})." | ".sprintf("%-${length_storage_target}s", $disk_hash->{guest_device})." | ".sprintf("%-${length_storage_size}s", $disk_hash->{size})." | ".sprintf("%-${length_storage_source}s", $disk_hash->{source})." | ".sprintf("%-${length_network_mac}s", $nic_hash->{mac})." | ".sprintf("%-${length_network_model}s", $nic_hash->{model})." | ".sprintf("%-${length_network_bridge}s", $nic_hash->{bridge})." |\n";
+		}
+	}
+	$break_line =~ s/^\+/ /;
+	$break_line =~ s/\+$/ /;
+	$break_line =~ s/\+/^/g;
+	print $break_line."\n\n";
+	
+	my $bridges = "";
+	foreach my $bridge_name (sort {$a cmp $b} keys %{$conf->{bridge}})
+	{
+		$bridges .= $bridge_name.", ";
+	}
+	$bridges =~ s/, $//;
+	
+	my $volume_groups = "";
+	foreach my $vg (sort {$a cmp $b} keys %{$conf->{vg}})
+	{
+		$volume_groups .= "- ".$vg.": ".hr_size($conf, $conf->{vg}{$vg}{size})."/".hr_size($conf, $conf->{vg}{$vg}{free})." (size/free)\n";
+	}
+
+	print "-=] Host: 
+
+CPU: ... ".$conf->{summary}{cpu}{model}." (".$conf->{summary}{cpu}{cores}."c/".$conf->{summary}{cpu}{threads}."t)
+RAM: ... ".hr_size($conf, $conf->{summary}{ram}{size})." total, ".hr_size($conf, $conf->{summary}{ram}{allocated})." allocated, ".hr_size($conf, $conf->{summary}{ram}{available})." available for servers
+Swap: .. ".hr_size($conf, $conf->{summary}{swap}{size})." total, ".hr_size($conf, $conf->{summary}{swap}{used})." used, ".hr_size($conf, $conf->{summary}{swap}{free})." free
+Bridges: ".$bridges."
+VGs;
+".$volume_groups."
+\n\n";
+	
+	return(0);
+}
+
+# This converts a raw number of bytes to a human readable size. It always uses base-2.
+sub hr_size
+{
+	my ($conf, $hr_size) = @_;
+	
+	if ($hr_size >= (2 ** 80))
+	{
+		# Yebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)))." YiB";
+	}
+	elsif ($hr_size >= (2 ** 70))
+	{
+		# Zebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)))." ZiB";
+	}
+	elsif ($hr_size >= (2 ** 60))
+	{
+		# Exbibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)))." EiB";
+	}
+	elsif ($hr_size >= (2 ** 50))
+	{
+		# Pebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)))." PiB";
+	}
+	elsif ($hr_size >= (2 ** 40))
+	{
+		# Tebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)))." TiB";
+	}
+	elsif ($hr_size >= (2 ** 30))
+	{
+		# Gibibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)))." GiB";
+	}
+	elsif ($hr_size >= (2 ** 20))
+	{
+		# Mebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)))." MiB";
+	}
+	elsif ($hr_size >= (2 ** 10))
+	{
+		# Kibibyte
+		$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)))." KiB";
+	}
+	else
+	{
+		$hr_size .= " Bytes";
+	}
+	
+	return($hr_size);
+}
+
+# Collect the data we want
+sub gather_data
+{
+	my ($conf) = @_;
+	
+	collect_cpu_data($conf);
+	collect_ram_data($conf);
+	collect_storage_data($conf);
+	collect_server_data($conf);
+	collect_bridges($conf);
+	
+	return(0);
+}
+
+sub collect_bridges
+{
+	my ($conf) = @_;
+	
+	my $shell_call = "brctl show";
+	print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [".$shell_call."], the error was: [".$!."]\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+		
+		next if $line =~ /^bridge name/i;
+		next if $line =~ /^\s/;
+		if ($line =~ /^(\S.*?)\s/)
+		{
+			my $bridge_name = $1;
+			$conf->{bridge}{$bridge_name} = 1;
+			print __LINE__."; [ Debug ] - bridge::".$bridge_name.": [".$conf->{bridge}{$bridge_name}."]\n" if $conf->{debug} >= 2;
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This reads in the XML files for the servers to report what each server is using.
+sub collect_server_data
+{
+	my ($conf) = @_;
+	
+	$conf->{summary}{ram}{allocated} = 0;
+	
+	my $definitions_directory = "/shared/definitions";
+	print __LINE__."; [ Debug ] - definitions_directory: [".$definitions_directory."]\n" if $conf->{debug} >= 2;
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $definitions_directory);
+	while(my $file = readdir(DIRECTORY))
+	{
+		print __LINE__."; [ Debug ] - file: [".$file."]\n" if $conf->{debug} >= 2;
+		
+		next if $file !~ /\.xml$/;
+		my $full_file = $definitions_directory."/".$file;
+		next if not -f $full_file;
+		
+		print __LINE__."; [ Debug ] - full_file: [".$full_file."]\n" if $conf->{debug} >= 2;
+		
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($full_file, ForceArray => 1);
+		
+		#print Dumper $data;
+		my $current_memory_number = $data->{currentMemory}->[0]->{content};
+		my $current_memory_units  = $data->{currentMemory}->[0]->{unit};
+		my $current_memory_bytes  = hr_to_bytes($conf, $current_memory_number, $current_memory_units);
+		my $memory_number         = $data->{memory}->[0]->{content};
+		my $memory_units          = $data->{memory}->[0]->{unit};
+		my $memory_bytes          = hr_to_bytes($conf, $current_memory_number, $current_memory_units);
+		my $ram                   = $current_memory_bytes > $memory_bytes ? $current_memory_bytes : $memory_bytes;
+		my $cores                 = $data->{vcpu}->[0]->{content};
+		my $cpu_mode              = $data->{cpu}->[0]->{mode} ? $data->{cpu}->[0]->{mode} : "compatibility";
+		my $name                  = $data->{name}->[0];
+		print __LINE__."; [ Debug ] - 
+- current_memory_number: [".comma($conf, $current_memory_number)."]
+- current_memory_units:  [".$current_memory_units."]
+- current_memory_bytes:  [".$current_memory_bytes." (".hr_size($conf, $current_memory_bytes).")]
+- memory_number: ....... [".comma($conf, $memory_number)."]
+- memory_units: ........ [".$memory_units."]
+- memory_bytes: ........ [".$memory_bytes." (".hr_size($conf, $memory_bytes).")], 
+- ram: ................. [".$ram." (".hr_size($conf, $ram).")]
+- cores: ............... [".$cores."] 
+- cpu_mode: ............ [".$cpu_mode."]
+- name: ................ [".$name."]
+" if $conf->{debug} >= 2;
+		
+		$conf->{server}{$name}{cpu}{cores} =  $cores;
+		$conf->{server}{$name}{cpu}{mode}  =  $cpu_mode;
+		$conf->{server}{$name}{ram}        =  $ram;
+		$conf->{summary}{ram}{allocated}   += $ram;
+		print __LINE__."; [ Debug ] - 
+- server::${name}::cpu::cores: [".$conf->{server}{$name}{cpu}{cores}."]
+- server::${name}::cpu::mode:  [".$conf->{server}{$name}{cpu}{mode}."]
+- server::${name}::ram: ...... [".$conf->{server}{$name}{ram}." (".hr_size($conf, $conf->{server}{$name}{ram}).")]
+- summary::ram::allocated: ... [".$conf->{summary}{ram}{allocated}." (".hr_size($conf, $conf->{summary}{ram}{allocated}).")]
+" if $conf->{debug} >= 2;
+		
+		#print Dumper $data->{devices}->[0]->{disk};
+		foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
+		{
+			my $device_type  = $hash_ref->{device};
+			my $source       = $hash_ref->{source}->[0]->{dev} ? $hash_ref->{source}->[0]->{dev} : "";
+			my $guest_device = $hash_ref->{target}->[0]->{dev};
+			my $bus          = $hash_ref->{target}->[0]->{bus};
+			my $size         = 0;
+			if ((not $source) && ($device_type eq "cdrom"))
+			{
+				$source = "Ejected";
+			}
+			elsif (($device_type eq "disk") && ($conf->{lv}{$source}{size}))
+			{
+				$size = $conf->{lv}{$source}{size};
+			}
+			print __LINE__."; [ Debug ] - 
+- device_type:  [".$device_type."]
+- source: ..... [".$source."] 
+- guest_device: [".$guest_device."] 
+- bus: ........ [".$bus."]
+- size: ....... [".$size." (".hr_size($conf, $size).")]
+" if $conf->{debug} >= 2;
+			
+			$conf->{server}{$name}{block}{$device_type}{$guest_device}{bus}    = $bus;
+			$conf->{server}{$name}{block}{$device_type}{$guest_device}{source} = $source;
+			$conf->{server}{$name}{block}{$device_type}{$guest_device}{size}   = $size;
+			print __LINE__."; [ Debug ] - 
+- server::${name}::block::${device_type}::${guest_device}::bus: .. [".$conf->{server}{$name}{block}{$device_type}{$guest_device}{bus}."]
+- server::${name}::block::${device_type}::${guest_device}::source: [".$conf->{server}{$name}{block}{$device_type}{$guest_device}{source}."]
+- server::${name}::block::${device_type}::${guest_device}::size: . [".$conf->{server}{$name}{block}{$device_type}{$guest_device}{size}." (".hr_size($conf, $conf->{server}{$name}{block}{$device_type}{$guest_device}{size}).")]
+" if $conf->{debug} >= 2;
+		}
+		
+		#print Dumper $data->{devices}->[0]->{interface};
+		foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
+		{
+			my $bridge = $hash_ref->{source}->[0]->{bridge};
+			my $model  = $hash_ref->{model}->[0]->{type};
+			my $mac    = $hash_ref->{mac}->[0]->{address};
+			print __LINE__."; [ Debug ] - 
+- bridge: [".$bridge."]
+- model:  [".$model."]
+- mac: .. [".$mac."]
+" if $conf->{debug} >= 2;
+			
+			$conf->{server}{$name}{network}{$mac}{bridge} = $bridge;
+			$conf->{server}{$name}{network}{$mac}{model}  = $model;
+			print __LINE__."; [ Debug ] - 
+- server::${name}::network::${mac}::bridge: [".$conf->{server}{$name}{network}{$mac}{bridge}."]
+- server::${name}::network::${mac}::model:  [".$conf->{server}{$name}{network}{$mac}{model}."]
+" if $conf->{debug} >= 2;
+		}
+	}
+	closedir(DIRECTORY);
+	
+	# Calculate the available RAM; We take a simple 4GiB off as our 'free' comes from dmi, not /proc/meminfo
+	$conf->{summary}{ram}{free}      = $conf->{summary}{ram}{size} - $conf->{summary}{ram}{allocated};
+	$conf->{summary}{ram}{available} = $conf->{summary}{ram}{free} - (4 * (2 ** 30));
+	print __LINE__."; [ Debug ] - 
+- summary::ram::free: .... [".$conf->{summary}{ram}{free}." (".hr_size($conf, $conf->{summary}{ram}{free}).")]
+- summary::ram::available: [".$conf->{summary}{ram}{available}." (".hr_size($conf, $conf->{summary}{ram}{available}).")]
+" if $conf->{debug} >= 2;
+	
+	return(0);
+}
+
+# This collects data on existing LVs and VGs.
+sub collect_storage_data
+{
+	my ($conf) = @_;
+	
+	# Collect the LVs
+	my $lv_path    = "";
+	my $lv_size    = 0;
+	my $on_vg      = "";
+	my $shell_call = "lvdisplay --units b";
+	print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [".$shell_call."], the error was: [".$!."]\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+		
+		if ($line =~ /LV Path (\/dev\/.*)$/)
+		{
+			$lv_path = $1;
+			print __LINE__."; [ Debug ] - lv_path: [".$lv_path."]\n" if $conf->{debug} >= 2;
+		}
+		next if not $lv_path;
+		
+		if ($line =~ /VG Name (.*)$/)
+		{
+			$on_vg = $1;
+			print __LINE__."; [ Debug ] - on_vg: [".$on_vg."]\n" if $conf->{debug} >= 2;
+		}
+		if ($line =~ /LV Size (\d+) B/)
+		{
+			$lv_size = $1;
+			print __LINE__."; [ Debug ] - lv_size: [".$lv_size." (".hr_size($conf, $lv_size).")]\n" if $conf->{debug} >= 2;
+		}
+		if (not $line)
+		{
+			if ($lv_size)
+			{
+				$conf->{lv}{$lv_path}{on_vg} = $on_vg;
+				$conf->{lv}{$lv_path}{size}  = $lv_size;
+				print __LINE__."; [ Debug ] - 
+- lv::${lv_path}::on_vg: [".$conf->{lv}{$lv_path}{on_vg}."]
+- lv::${lv_path}::size:. [".$conf->{lv}{$lv_path}{size}." (".hr_size($conf, $conf->{lv}{$lv_path}{size}).")]
+" if $conf->{debug} >= 2;
+			}
+			$lv_path = "";
+			$lv_size = 0;
+			$on_vg   = "";
+		}
+	}
+	close $file_handle;
+	
+	# Get VG info
+	my $in_vg      = "";
+	   $shell_call = "vgdisplay --units b";
+	print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [".$shell_call."], the error was: [".$!."]\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+		
+		if ($line =~ /VG Name (.*+)$/)
+		{
+			$in_vg = $1;
+			print __LINE__."; [ Debug ] - in_vg: [".$in_vg."]\n" if $conf->{debug} >= 2;
+			next;
+		}
+		next if not $in_vg;
+		if (not $line)
+		{
+			$in_vg = "";
+			print __LINE__."; [ Debug ] - in_vg: [".$in_vg."]\n" if $conf->{debug} >= 2;
+			next;
+		}
+		
+		if ($line =~ /VG Size (\d+) B/)
+		{
+			$conf->{vg}{$in_vg}{size} = $1;
+			print __LINE__."; [ Debug ] - vg::".$in_vg."::size: [".$conf->{vg}{$in_vg}{size}." (".hr_size($conf, $conf->{vg}{$in_vg}{size}).")]\n" if $conf->{debug} >= 2;
+		}
+		if ($line =~ /PE Size (\d+) B/)
+		{
+			$conf->{vg}{$in_vg}{pe_size} = $1;
+			print __LINE__."; [ Debug ] - vg::".$in_vg."::pe_size: [".$conf->{vg}{$in_vg}{pe_size}." (".hr_size($conf, $conf->{vg}{$in_vg}{pe_size}).")]\n" if $conf->{debug} >= 2;
+		}
+		if ($line =~ /Free PE \/ Size \d+ \/ (\d+) B/)
+		{
+			$conf->{vg}{$in_vg}{free} = $1;
+			print __LINE__."; [ Debug ] - vg::".$in_vg."::free: [".$conf->{vg}{$in_vg}{free}." (".hr_size($conf, $conf->{vg}{$in_vg}{free}).")]\n" if $conf->{debug} >= 2;
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This reads in data about the RAM
+sub collect_ram_data
+{
+	my ($conf) = @_;
+	
+	my $total_size    = 0;
+	my $size          = "";
+	my $locator       = "";
+	my $manufacturer  = "";
+	my $part_number   = "";
+	my $serial_number = "";
+	my $shell_call    = "dmidecode --type memory";
+	print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [".$shell_call."], the error was: [".$!."]\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:\s+/: /;
+		print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+	
+		if ($line =~ /^Locator: (.*?)$/)
+		{
+			$locator = $1;
+			print __LINE__."; [ Debug ] - locator: [".$locator."]\n" if $conf->{debug} >= 2;
+		}
+		if ($line =~ /^Size: (.*?)$/)
+		{
+			$size = $1;
+			print __LINE__."; [ Debug ] - size: [".$size."]\n" if $conf->{debug} >= 2;
+			
+			# If the "size" is "no module installed", we're done here.
+			if ($size !~ /^\d/)
+			{
+				$locator = "";
+				$size    = "";
+				print __LINE__."; [ Debug ] - locator: [".$locator."], size: [".$size."]\n" if $conf->{debug} >= 2;
+				next;
+			}
+			
+			# This reports in 'MB' but it's really 'MiB'.
+			$size       =  hr_to_bytes($conf, $size);
+			$total_size += $size;
+			print __LINE__."; [ Debug ] - size: [".$size."], total_size: [".$total_size."]\n" if $conf->{debug} >= 2;
+			
+			die if not defined $size;
+		}
+		next if not $locator;
+		if (not $line)
+		{
+			if ($size)
+			{
+				$conf->{ram}{dmi}{locator}{$locator}{size} = $size;
+				print __LINE__."; [ Debug ] - ram::dmi::locator::".$locator."::size: [".comma($conf, $conf->{ram}{dmi}{locator}{$locator}{size})." (".hr_size($conf, $conf->{ram}{dmi}{locator}{$locator}{size}).")]\n" if $conf->{debug} >= 2;
+			}
+			
+			$size    = "";
+			$locator = "";
+			print __LINE__."; [ Debug ] - size: [".$size."], locator: [".$locator."]\n" if $conf->{debug} >= 2;
+		}
+	}
+	close $file_handle;
+	
+	if (-r '/proc/meminfo')
+	{
+		my $shell_call = "/proc/meminfo";
+		print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [".$shell_call."], the error was: [".$!."]\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+			
+			if ($line =~ /^(.*?):\s+(\d+.*?)$/)
+			{
+				my $variable = $1;
+				my $size     = $2;
+				print __LINE__."; [ Debug ] - variable: [".$variable."], size: [".$size."]\n" if $conf->{debug} >= 2;
+				
+				# We care about a few variables only.
+				my $say_variable = "";
+				if ($variable eq "SwapTotal")
+				{
+					$say_variable = "swap_total";
+					print __LINE__."; [ Debug ] - say_variable: [".$say_variable."]\n" if $conf->{debug} >= 2;
+				}
+				if ($variable eq "SwapFree")
+				{
+					$say_variable = "swap_free";
+					print __LINE__."; [ Debug ] - say_variable: [".$say_variable."]\n" if $conf->{debug} >= 2;
+				}
+				next if not $say_variable;
+				
+				# This reports sizes as 'kB', but it's really base2.
+				$size = hr_to_bytes($conf, $size);
+				
+				$conf->{summary}{ram}{proc}{$say_variable} = $size;
+				print __LINE__."; [ Debug ] - summary::ram::proc::".$say_variable.": [".comma($conf, $conf->{summary}{ram}{proc}{$say_variable})." (".hr_size($conf, $conf->{summary}{ram}{proc}{$say_variable}).")]\n" if $conf->{debug} >= 2;
+			}
+		}
+		close $file_handle;
+	}
+	
+	$conf->{summary}{ram}{size}  = $total_size;
+	$conf->{summary}{swap}{size} = $conf->{summary}{ram}{proc}{swap_total};
+	$conf->{summary}{swap}{free} = $conf->{summary}{ram}{proc}{swap_free};
+	$conf->{summary}{swap}{used} = $conf->{summary}{ram}{proc}{swap_total} - $conf->{summary}{ram}{proc}{swap_free};
+	print __LINE__."; [ Debug ] - 
+- summary::ram::size:  [".comma($conf, $conf->{summary}{ram}{size})." (".hr_size($conf, $conf->{summary}{ram}{size}).")]
+- summary::swap::size: [".comma($conf, $conf->{summary}{swap}{size})." (".hr_size($conf, $conf->{summary}{swap}{size}).")]
+- summary::swap::free: [".comma($conf, $conf->{summary}{swap}{free})." (".hr_size($conf, $conf->{summary}{swap}{free}).")]
+- summary::swap::used: [".comma($conf, $conf->{summary}{swap}{used})." (".hr_size($conf, $conf->{summary}{swap}{used}).")]
+" if $conf->{debug} >= 2;
+	
+	return(0);
+}
+
+# This reads in data about the CPU
+sub collect_cpu_data
+{
+	my ($conf) = @_;
+	
+	my $total_cores   = 0;
+	my $total_threads = 0;
+	my $cores         = 0;
+	my $threads       = 0;
+	my $in_cpu        = "";
+	my $shell_call    = "dmidecode --type processor";
+	print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [".$shell_call."], the error was: [".$!."]\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+		
+		if ($line =~ /Socket Designation: (.*+)$/)
+		{
+			$in_cpu = $1;
+			print __LINE__."; [ Debug ] - in_cpu: [".$in_cpu."]\n" if $conf->{debug} >= 2;
+		}
+		elsif (not $line)
+		{
+			# TODO: Process here?
+			$in_cpu  = "";
+			$cores   = 0;
+			$threads = 0;
+			print __LINE__."; [ Debug ] - in_cpu: [".$in_cpu."], cores: [".$cores."], threads: [".$threads."]\n" if $conf->{debug} >= 2;
+		}
+		next if $in_cpu eq "";
+		
+		if ($line =~ /Core Count: (\d+)$/)
+		{
+			$cores       =  $1;
+			$total_cores += $cores; 
+			print __LINE__."; [ Debug ] - cores: [".$cores."], total_cores: [".$total_cores."]\n" if $conf->{debug} >= 2;
+		}
+		if ($line =~ /Thread Count: (\d+)$/)
+		{
+			$threads       =  $1;
+			$total_threads += $threads; 
+			print __LINE__."; [ Debug ] - threads: [".$threads."], total_threads: [".$total_threads."]\n" if $conf->{debug} >= 2;
+		}
+	}
+	close $file_handle;
+	
+	# Read in /proc/cpuinfo.
+	my $model = "";
+	if (-r '/proc/cpuinfo')
+	{
+		my $shell_call = "/proc/cpuinfo";
+		print __LINE__."; [ Debug ] - shell_call: [".$shell_call."]\n" if $conf->{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [".$shell_call."], the error was: [".$!."]\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			print __LINE__."; [ Debug ] - line: [".$line."]\n" if $conf->{debug} >= 2;
+			
+			if ($line =~ /^model name: (.*?)$/)
+			{
+				my $this_model = $1;
+				print __LINE__."; [ Debug ] - this_model: [".$this_model."]\n" if $conf->{debug} >= 2;
+				if (not $model)
+				{
+					$model = $this_model;
+					print __LINE__."; [ Debug ] - model: [".$model."]\n" if $conf->{debug} >= 2;
+					last;
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Record what we found.
+	$conf->{summary}{cpu}{model}   = $model;
+	$conf->{summary}{cpu}{cores}   = $total_cores;
+	$conf->{summary}{cpu}{threads} = $total_threads;
+	print __LINE__."; [ Debug ] - 
+- summary::cpu::model: . [".$conf->{summary}{cpu}{model}."]
+- summary::cpu::cores: . [".$conf->{summary}{cpu}{cores}."]
+- summary::cpu::threads: [".$conf->{summary}{cpu}{threads}."]
+" if $conf->{debug} >= 2;
+	
+	return(0);
+}
+
+# This takes a "human readable" size with an ISO suffix and converts it back to a base byte size as 
+# accurately as possible.
+sub hr_to_bytes
+{
+	my ($conf, $size, $type) = @_;
+	   $size  = 0 if not defined $size;
+	   $type  = 0 if not defined $type;
+	my $value =  $size;
+	   $size   =~ s/ //g;
+	   $type   =~ s/ //g;
+	print __LINE__."; [ Debug ] - size: [".$size."], type: [".$type."]\n" if $conf->{debug} >= 2;
+	
+	# Store and strip the sign
+	my $sign = "";
+	if ($size =~ /^-/)
+	{
+		$sign =  "-";
+		$size =~ s/^-//;
+	}
+	$size =~ s/,//g;
+	$size =~ s/^\+//g;
+	print __LINE__."; [ Debug ] - size: [".$size."], sign: [".$sign."]\n" if $conf->{debug} >= 2;
+	
+	# If I don't have a passed type, see if there is a letter or letters after the size to hack off.
+	if ((not $type) && ($size =~ /[a-zA-Z]$/))
+	{
+		($size, $type) = ($size =~ /^(.*\d)(\D+)/);
+		print __LINE__."; [ Debug ] - size: [".$size."], type: [".$type."]\n" if $conf->{debug} >= 2;
+	}
+	$type = lc($type);
+	print __LINE__."; [ Debug ] - type: [".$type."]\n" if $conf->{debug} >= 2;
+	
+	# Make sure that 'size' is now an integer or float.
+	if ($size !~ /\d+[\.\d+]?/)
+	{
+		# Return nothing in case the user is blocking fatal errors.
+		die "[ Warning ] - The passed byte size: [".$size."] in the string: [sign: ".$sign.", size: ".$size,", type: ".$type."] contains an illegal value. Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.\n";
+		return (0);
+	}
+	
+	# If 'type' is still blank, set it to 'b'.
+	$type = "b" if not $type;
+	print __LINE__."; [ Debug ] - type: [".$type."]\n" if $conf->{debug} >= 2;
+	
+	# If the type is already bytes, make sure the size is an integer and return.
+	if ($type eq "b")
+	{
+		if ($size =~ /\D/)
+		{
+			die "[ Warning ] - The passed byte size: [".$size."] in the string: [sign: ".$sign.", size: [".$size."], type: [".$type."] appears to be a byte size already but the size does not seem to be an integer. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.\n";
+			return(0);
+		}
+		return ($sign.$size);
+	}
+	
+	# Now the magic... lame magic, true, but still.
+	my $bytes = $size;
+	if    ($type =~ /^y/i) { $bytes = Math::BigInt->new('2')->bpow('80')->bmul($size); }	# Yobibyte
+	elsif ($type =~ /^z/i) { $bytes = Math::BigInt->new('2')->bpow('70')->bmul($size); }	# Zibibyte
+	elsif ($type =~ /^e/i) { $bytes = Math::BigInt->new('2')->bpow('60')->bmul($size); }	# Exbibyte
+	elsif ($type =~ /^p/i) { $bytes = Math::BigInt->new('2')->bpow('50')->bmul($size); }	# Pebibyte
+	elsif ($type =~ /^t/i) { $bytes = ($size * (2 ** 40)) }					# Tebibyte
+	elsif ($type =~ /^g/i) { $bytes = ($size * (2 ** 30)) }					# Gibibyte
+	elsif ($type =~ /^m/i) { $bytes = ($size * (2 ** 20)) }					# Mebibyte
+	elsif ($type =~ /^k/i) { $bytes = ($size * (2 ** 10)) }					# Kibibyte
+	else
+	{
+		die "[ Warning ] - The byte size type: [".$type."] is not valid.\n";
+		return(0);
+	}
+	print __LINE__."; [ Debug ] - bytes: [".$bytes."]\n" if $conf->{debug} >= 2;
+	
+	# Last, round off the byte size if it is a float.
+	if ($bytes =~ /\./)
+	{
+		$bytes = round($conf, $bytes, 0);
+		print __LINE__."; [ Debug ] - bytes: [".$bytes."]\n" if $conf->{debug} >= 2;
+	}
+	
+	print __LINE__."; [ Debug ] - return: [".$sign.$bytes."]\n" if $conf->{debug} >= 2;
+	return ($sign.$bytes);
+}
+
+# This takes a large number and inserts commas every three characters left of the decimal place. This method
+# doesn't take a parameter hash reference.
+sub comma
+{
+	my ($conf, $number) = @_;
+	
+	# Return if nothing passed.
+	return(undef) if not defined $number;
+	
+	# Strip out any existing commas.
+	$number =~ s/,//g;
+	
+	# Record and remove the sign, if present.
+	my $sign = "";
+	if ($number =~ /^\+/)
+	{
+		$number =~ s/^\+//g;
+		$sign   =  "+";
+	}
+	elsif ($number =~ /^\-/)
+	{
+		$number =~ s/^\-//g;
+		$sign   =  "-";
+	}
+	
+	# Split on the left-most period.
+	#print "$THIS_FILE ".__LINE__."; number: [$number]\n";
+	my ($whole, $decimal) = split/\./, $number, 2;
+	$whole   = "" if not defined $whole;
+	$decimal = "" if not defined $decimal;
+	
+	# Now die if either number has a non-digit character in it.
+	#print "$THIS_FILE ".__LINE__."; whole: [$whole], decimal: [$decimal]\n";
+	if (($whole =~ /\D/) or ($decimal =~ /\D/))
+	{
+		# Return nothing in case the user is blocking fatal errors.
+		print "[ Warning ] - The number: [".$number."] passed into the 'comma' function contains a non-digit character or too many decimals.\n";
+		return (undef);
+	}
+	
+	local($_) = $whole ? $whole : "";
+	
+	1 while s/^(-?\d+)(\d{3})/$1,$2/;
+	$whole = $_;
+	$whole = 0 if $whole eq "";
+	
+	my $return = $decimal ? "$whole.$decimal" : $whole;
+	if ($sign)
+	{
+		$return = $sign.$return;
+	}
+	
+	return ($return);
+}
+
+# This takes a number and rounds it to a given number of places after the decimal (defaulting to an even 
+# integer). This does financial-type rounding.
+sub round
+{
+	my ($conf, $num, $places) = @_;
+	$num    = 0 if not defined $num;
+	$places = 0 if not defined $places;
+	
+	# Return if the user passed a double-dash.
+	return('--') if $num eq "--";
+	
+	# Make a copy of the passed number that I can manipulate.
+	my $rounded_num = $num;
+	
+	# Take out any commas.
+	$rounded_num =~ s/,//g;
+	
+	# If there is a decimal place in the number, do the smart math. Otherwise, just pad the number with 
+	# the requested number of zeros after the decimal place.
+	if ( $rounded_num =~ /\./ )
+	{
+		# Split up the number.
+		my ($real, $decimal) = split/\./, $rounded_num, 2;
+		
+		# If there is anything other than one ',' and digits, error.
+		if (($real =~ /\D/) or ($decimal =~ /\D/))
+		{
+			# Return nothing in case the user is blocking fatal errors.
+			print "[ Warning ] - The passed real number: [".$num."] contains an illegal value. Only digits and one decimal place are allowed in the real number being rounded.\n";
+			return (undef);
+		}
+		
+		# If the number is already equal to the requested number of places after the decimal, just 
+		# return. If it is less, pad the needed number of zeros. Otherwise, start rounding.
+		if ( length($decimal) == $places )
+		{
+			# Equal, return.
+			return $rounded_num;
+		}
+		elsif ( length($decimal) < $places )
+		{
+			# Less, pad.
+			$rounded_num = sprintf("%.${places}f", $rounded_num);
+		}
+		else
+		{
+			# Greater than; I need to round the number. Start by getting the number of places I 
+			# need to round.
+			my $round_diff = length($decimal) - $places;
+			
+			# This keeps track of whether the next (left) digit needs to be incremented.
+			my $increase = 0;
+			
+			# Now loop the number of times needed to round to the requested number of places.
+			for (1..$round_diff)
+			{
+				# Reset 'increase'.
+				$increase = 0;
+				
+				# Make sure I am dealing with a digit.
+				if ($decimal =~ /(\d)$/)
+				{
+					my $last_digit =  $1;
+					$decimal       =~ s/$last_digit$//;
+					if ($last_digit > 4)
+					{
+						$increase = 1;
+						if ($decimal eq "")
+						{
+							$real++;
+						}
+						else
+						{
+							$decimal++;
+						}
+					}
+				}
+			}
+			if ($places == 0 )
+			{
+				$rounded_num = $real;
+			}
+			else
+			{
+				$rounded_num = $real.".".$decimal;
+			}
+		}
+	}
+	else
+	{
+		# This is a whole number so just pad 0s as needed.
+		$rounded_num = sprintf("%.${places}f", $rounded_num);
+	}
+	
+	# Return the number.
+	return ($rounded_num);
+}

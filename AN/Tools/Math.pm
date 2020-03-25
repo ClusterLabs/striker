@@ -48,7 +48,6 @@ sub parent
 #############################################################################################################
 
 
-### TODO: Does this handle "x.95" type rounding properly?
 # This takes a number and rounds it to a given number of places after the decimal (defaulting to an even 
 # integer). This does financial-type rounding.
 sub round

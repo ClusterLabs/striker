@@ -1335,7 +1335,7 @@
 		<key name="message_0008">
 -=] Host: 
 
-CPU: ... #!variable!model!# (#!variable!cores!#c/#!variable!cores!#t)
+CPU: ... #!variable!model!# (#!variable!cores!#c/#!variable!threads!#t)
 RAM: ... #!variable!ram_size!# total, #!variable!ram_allocated!# allocated, #!variable!ram_available!# available for servers
 Swap: .. #!variable!swap_size!# total, #!variable!swap_used!# used, #!variable!swap_free!# free
 Bridges: #!variable!bridges!#
