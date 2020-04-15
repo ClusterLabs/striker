@@ -233,7 +233,7 @@ my $conf = {
 				mode		=>	0755,
 			},
 			fence_raritan_snmp =>	{
-				url		=>	"https://raw.githubusercontent.com/ClusterLabs/striker/master/tools//fence_raritan_snmp",
+				url		=>	"https://raw.githubusercontent.com/ClusterLabs/striker/master/tools/fence_raritan_snmp",
 				mode		=>	0755,
 			},
 		},
