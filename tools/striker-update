@@ -2641,6 +2641,30 @@ done
 			}
 		}
 	}
+	
+	# If we're updating local, we're a dashboard and we need to update anvil-map-network under apache as
+	# it is downloaded by nodes during the install.
+	if ($target eq "local")
+	{
+		# We need to make sure that 'anvil-map-network' is updated where it will be
+		# downloaded from by nodes during kickstart installs.
+		my $source      = $an->data->{path}{updates}{striker}."/*";
+		my $target_path = "/var/www/html/".get_os_type($an)."6/x86_64";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "target_path", value2 => $target_path, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $directory ("files", "img")
+		{
+			my $destination = $target_path."/".$directory."/Tools/striker/";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "destination", value1 => $destination, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			rsync_data($an, $source, $destination);
+		}
+	}
 	print "- Done.\n\n";
 	
 	if ($type eq "node")
