@@ -11606,7 +11606,7 @@ sub install_programs_on_node
 	if ($to_install)
 	{
 		# Clear the old cache and install missing packages.
-		my $shell_call = $an->data->{path}{yum}." clean expire-cache && ".$an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." install $to_install";
+		my $shell_call = $an->data->{path}{yum}." clean expire-cache && ".$an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." --disablerepo=* --enablerepo=*striker* install $to_install";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
