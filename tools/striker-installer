@@ -5332,14 +5332,12 @@ chmod 755 /root/striker-installer.example
 	}
 	
 	$kickstart .= "
-### Note: dual 'baseurl=' definitions work, but are not defined so it might
-###       be worth approaching this differently later.
 # Add local repos
 cat > /etc/yum.repos.d/".$short_name."_".$os.".repo << EOF
 [".$short_name."-$os]
 name=Striker ".$short_name." repository
 baseurl=http://".$conf->{network}{bcn}{ip}."/$os_directory/x86_64/img/
-baseurl=http://".$conf->{network}{ifn}{ip}."/$os_directory/x86_64/img/
+        http://".$conf->{network}{ifn}{ip}."/$os_directory/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
