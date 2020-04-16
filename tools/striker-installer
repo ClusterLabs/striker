@@ -144,6 +144,7 @@ my $conf = {
 		chkconfig		=>	"/sbin/chkconfig",
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
+		createrepo		=>	"/usr/bin/createrepo",
 		curl			=>	"/usr/bin/curl",
 		dmidecode		=>	"/usr/sbin/dmidecode",
 		echo			=>	"/bin/echo",
@@ -2824,6 +2825,20 @@ priority=1
 	open ($file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 	print $file_handle $yum_config;
 	close $file_handle;
+	
+	# Finally, call createrepo to update our RPM repodata.
+	logger($conf, $THIS_FILE, __LINE__, "- Generating updated RPM repo data for the local repo.", 0);
+	my $shell_call = $conf->{executable}{createrepo}." /var/www/html/".$os_dir."/x86_64/img";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		print $_;
+	}
+	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
 	
 	return(0);
 }
