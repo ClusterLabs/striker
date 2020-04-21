@@ -76,9 +76,6 @@ to ScanCore to allow it to determine when a node that has gone into
 emergency-stop can be safely rebooted.
 
 
-VARIABLES
-
-
 SWITCHES
 
 
