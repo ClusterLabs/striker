@@ -22,10 +22,10 @@ with 'scan_ipmitool_'.
 		<key name="scan_ipmitool_log_0003">Failed to query node: [#!variable!machine!#]'s IPMI interface using the call: [#!variable!call!#]. Is the password correct?</key>
 		<key name="scan_ipmitool_log_0004">The thermal sensor named: [#!variable!sensor_name!#] has not changed.</key>
 		<key name="scan_ipmitool_log_0005">The sensor named: [#!variable!sensor_name!#] doesn't exist in the database, but its value is 'na', so it probably doesn't really exist. Ignoring it.</key>
-		<key name="scan_ipmitool_log_0006">The sensor named: [#!variable!sensor_name!#] appears to have vanished, but this is the first scan that it vanished. If it is gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans, we'll send an alarm.</key>
+		<key name="scan_ipmitool_log_0006">The sensor named: [#!variable!sensor_name!#] appears to have vanished, but this is the first scan that it vanished. This is generally harmless and just a sensor read issue.</key>
 		<key name="scan_ipmitool_log_0007">The sensor named: [#!variable!sensor_name!#] has returned.</key>
-		<key name="scan_ipmitool_log_0008">The sensor named: [#!variable!sensor_name!#] appears to have actually vanished. It has been gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans.</key>
-		<key name="scan_ipmitool_log_0009">The sensor named: [#!variable!sensor_name!#] appears to have vanished. It hasn't been seen in: [#!variable!scans!#] scans. If it is gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans, we'll send an alarm.</key>
+		<key name="scan_ipmitool_log_0008">#!free!#</key>
+		<key name="scan_ipmitool_log_0009">#!free!#</key>
 		
 		<!-- Sensor names -->
 		<key name="scan_ipmitool_sensor_name_0001">Ambient Temperature</key>
@@ -77,17 +77,6 @@ emergency-stop can be safely rebooted.
 
 
 VARIABLES
-
-scan-ipmitool::sensor_loss_count_to_alarm = X
-
-	This can be set to a while number in striker.conf to control how many 
-	times a scans in a row that a sensor needs to be missing before an 
-	alert is generated. The default is '3'. 
-	
-	On occassion, ipmitool (or the IPMI BMC) will report a sensor as 
-	missing on a given pass, the returning a short time later. By waiting a
-	certain number of losses before triggering the alarm, we can reduce the
-	chance of false alarms.
 
 
 SWITCHES
