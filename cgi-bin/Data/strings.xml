@@ -1083,9 +1083,9 @@
 		<key name="state_0107">#!free!#</key>
 		<key name="state_0108">#!free!#</key>
 		<key name="state_0109">#!free!#</key>
-		<key name="state_0110">Malformed MAC address found</key>
-		<key name="state_0111">Failed to download</key>
-		<key name="state_0112">Failed to extract files</key>
+		<key name="state_0110"><![CDATA[Malformed MAC address found.<br />Does the install manifest have <br />the correct Striker IPs?]]></key>
+		<key name="state_0111"><![CDATA[Failed to download<br />Does the install manifest have <br />the correct Striker IPs?]]></key>
+		<key name="state_0112"><![CDATA[Failed to extract files<br />Does the install manifest have <br />the correct Striker IPs?]]></key>
 		<key name="state_0113">Template #!string!brand_0002!# configuration not found.</key>
 		<key name="state_0114">Failed to create #!string!brand_0002!# configuration file.</key>
 		<key name="state_0115">#!free!#</key>

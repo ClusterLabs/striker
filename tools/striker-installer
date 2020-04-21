@@ -1319,15 +1319,16 @@ sub write_driver_update_script
 	
 	my $asix_driver = $driver_directory."/".$conf->{sys}{asix_driver}.".zip";
 	
+	# Make sure the directory we'll store the kernel version exists now.
+	if (not -e $conf->{directory}{striker_config})
+	{
+		mkdir $conf->{directory}{striker_config} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_config}."]. The error was: $!\n";
+	}
+	
 	# If we're running with '--source <path>', we need to do a few extra things first.
 	if ($conf->{switches}{source})
 	{
 		# Make sure the files we're going to use are in place.
-		if (not -e $conf->{directory}{striker_config})
-		{
-			mkdir $conf->{directory}{striker_config} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_config}."]. The error was: $!\n";
-		}
-		
 		if (not -e $conf->{directory}{striker_tools})
 		{
 			mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_tools}."]. The error was: $!\n";

@@ -4784,7 +4784,7 @@ sub configure_scancore
 			password  => $an->data->{sys}{anvil}{node2}{password},
 			node_name => $an->data->{sys}{anvil}{node2}{name},
 		}) if not $an->data->{node}{node2}{has_servers};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1_return_code",         value1 => $node1_return_code,
 		name2 => "node2_return_code",         value2 => $node2_return_code,
 		name3 => "node1_return_code_message", value3 => $node1_return_code_message,
@@ -5062,7 +5062,7 @@ fi;
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
