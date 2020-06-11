@@ -81,8 +81,8 @@ SET search_path = history, pg_catalog;
 			log_language			=>	"en_CA",
 			log_db_transactions		=>	0,
 			swap				=>	{
-				high				=>	25,	# Swap use over this percentage triggers alert
-				low				=>	10,	# Swap use below this percentage clears alert
+				high				=>	75,	# Swap use over this percentage triggers alert
+				low				=>	25,	# Swap use below this percentage clears alert
 			},
 		},
 	},
@@ -622,8 +622,8 @@ sub find_changes
 				my $old_swap_bytes_used   = $old_hardware_swap_total - $old_hardware_swap_free;
 				my $new_swap_percent_used = $an->Math->round({number => (($new_swap_bytes_used / $new_hardware_swap_total) * 100)});
 				my $old_swap_percent_used = $an->Math->round({number => (($old_swap_bytes_used / $old_hardware_swap_total) * 100)});
-				my $swap_percent_high     = $an->data->{'scan-hardware'}{swap}{high} =~ /^\d+/ ? $an->data->{'scan-hardware'}{swap}{high} : 25;
-				my $swap_percent_low      = $an->data->{'scan-hardware'}{swap}{high} =~ /^\d+/ ? $an->data->{'scan-hardware'}{swap}{high} : 25;
+				my $swap_percent_high     = $an->data->{'scan-hardware'}{swap}{high} =~ /^\d+/ ? $an->data->{'scan-hardware'}{swap}{high} : 75;
+				my $swap_percent_low      = $an->data->{'scan-hardware'}{swap}{low}  =~ /^\d+/ ? $an->data->{'scan-hardware'}{swap}{low}  : 25;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 					name1 => "new_swap_bytes_used",   value1 => $new_swap_bytes_used, 
 					name2 => "new_swap_percent_used", value2 => $new_swap_percent_used, 
@@ -642,12 +642,14 @@ sub find_changes
 					
 					# Send an alert telling the user that we've found a new controller.
 					$an->Alert->register_alert({
-						alert_level		=>	"warning", 
+						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort}++,
-						alert_title_key		=>	"an_alert_title_0004",
+						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_hardware_note_0002",
 						alert_message_variables	=>	{
+							swap_high         => $swap_percent_high,
+							swap_low          => $swap_percent_low,
 							swap_used_percent => $new_swap_percent_used, 
 							swap_total        => $an->Readable->bytes_to_hr({'bytes' => $new_hardware_swap_total})." (".$an->Readable->comma($new_hardware_swap_total)." #!string!suffix_0009!#)", 
 						},
@@ -663,12 +665,14 @@ sub find_changes
 					
 					# Send an alert telling the user that we've found a new controller.
 					$an->Alert->register_alert({
-						alert_level		=>	"warning", 
+						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort}++,
-						alert_title_key		=>	"an_alert_title_0006",
+						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_hardware_note_0003",
 						alert_message_variables	=>	{
+							swap_high         => $swap_percent_high,
+							swap_low          => $swap_percent_low,
 							swap_used_percent => $new_swap_percent_used, 
 							swap_total        => $an->Readable->bytes_to_hr({'bytes' => $new_hardware_swap_total})." (".$an->Readable->comma($new_hardware_swap_total)." #!string!suffix_0009!#)", 
 						},
