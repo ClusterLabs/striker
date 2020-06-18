@@ -2582,7 +2582,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_log_0011">There was a problem connecting to my peer: [#!variable!peer!#]. I will pause for a bit and then try again.</key>
 		<key name="asst_log_0012">#!free!#</key>
 		<key name="asst_log_0013">#!free!#</key>
-		<key name="asst_log_0014">The estimated resync time for the DRBD resource: [#!variable!resource!#] is: [#!variable!sync_eta!#] seconds, which is over the maximum wait time of: [#!data!sys::resync_max_wait_time!#] second. Boosting the sync speed and will recheck the ETA in a few moments. Note that this maximum wait time can be configured via 'sys::resync_max_wait_time = X'.</key>
+		<key name="asst_log_0014">The estimated resync time for the DRBD resource: [#!variable!resource!#] is: [#!variable!sync_eta!#] seconds, which is over the maximum wait time of: [#!data!anvil-safe-start::drbd::max_wait_time!#] second. Boosting the sync speed and will recheck the ETA in a few moments. Note that this maximum wait time can be configured via 'anvil-safe-start::drbd::max_wait_time = X'.</key>
 		<key name="asst_log_0015">After boosting resync speed for the DRBD resource: [#!variable!resource!#], the estimated resync time is: [#!variable!sync_eta!#] seconds. This is too long, so the resource will be reset to config values and it will be left to resync after the servers have booted.</key>
 		<key name="asst_log_0016">After boosting resync speed for the DRBD resource: [#!variable!resource!#], the estimated resync time is: [#!variable!sync_eta!#] seconds. This is short enough that we will wait for it to finish sync'ing before proceeding.</key>
 		<key name="asst_log_0017">The DRBD resource: [#!variable!resource!#] is now synchronized, proceeding.</key>
