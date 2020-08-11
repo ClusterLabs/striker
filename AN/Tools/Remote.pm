@@ -532,6 +532,7 @@ sub remote_call
 			{
 				# This is for the user
 				$error = $an->String->get({key => "error_message_0031", variables => { target => $target }});
+				
 				# This is for our logs
 				$an->Log->entry({log_level => 1, message_key => "error_message_0031", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 			}

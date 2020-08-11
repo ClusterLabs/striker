@@ -179,6 +179,9 @@ SET search_path = history, pg_catalog;
 				# ===========================================================================
 				# CPUs tend to jump around wildly under sudden load, so we extend their jump
 				# range so we don't get spurious warnings all the time.
+				'CPU'				=>	{
+					jump				=>	10,
+				},
 				'CPU1'				=>	{
 					jump				=>	10,
 				},
