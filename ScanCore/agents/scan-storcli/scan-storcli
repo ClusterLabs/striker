@@ -2513,6 +2513,7 @@ WHERE
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
+							my $level       = "warning";
 							my $message_key = "scan_storcli_warning_0019";
 							my $title_key   = "an_alert_title_0004";
 							if ($old_variable_value eq "VANISHED")
@@ -2526,6 +2527,7 @@ WHERE
 							# 'None', the CGI completed.
 							if ($variable =~ /Active Operations/i)
 							{
+								$level     = "notice";
 								$title_key = "an_alert_title_0003";
 								if ($new_variable_value =~ /None/i)
 								{
@@ -2548,7 +2550,7 @@ WHERE
 							}
 							
 							$an->Alert->register_alert({
-								alert_level		=>	"warning", 
+								alert_level		=>	$level, 
 								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
