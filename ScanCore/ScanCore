@@ -4824,7 +4824,7 @@ sub check_email_configuration
 					my $port         =  $an->data->{sys}{anvil}{smtp}{alt_port} ? $an->data->{sys}{anvil}{smtp}{alt_port} : $an->data->{sys}{anvil}{smtp}{port};
 					   $postfix_main .= "smtp_fallback_relay = [".$an->data->{sys}{anvil}{smtp}{alt_server}."]:$port\n";
 				}
-				   $postfix_main .= "smtp_helo_name = ".$an->data->{sys}{anvil}{smtp}{helo_domain}."\n";
+				$postfix_main .= "smtp_helo_name = ".$an->data->{sys}{anvil}{smtp}{helo_domain}."\n";
 				$postfix_main .= "smtp_use_tls = yes\n";
 				$postfix_main .= "smtp_sasl_auth_enable = yes\n";
 				$postfix_main .= "smtp_sasl_password_maps = hash:".$an->data->{path}{postfix_relay_file}."\n";
