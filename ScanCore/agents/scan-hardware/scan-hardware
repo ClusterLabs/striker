@@ -536,7 +536,7 @@ sub find_changes
 			{
 				$say_old_hardware_led_id = "#!string!state_0039!#";
 			}
-			elsif ($old_hardware_led_id eq "on")
+			elsif ($old_hardware_led_id eq "off")
 			{
 				$say_old_hardware_led_id = "#!string!state_0040!#";
 			}
@@ -545,7 +545,7 @@ sub find_changes
 			{
 				$say_old_hardware_led_css = "#!string!state_0039!#";
 			}
-			elsif ($old_hardware_led_css eq "on")
+			elsif ($old_hardware_led_css eq "off")
 			{
 				$say_old_hardware_led_css = "#!string!state_0040!#";
 			}
@@ -554,7 +554,7 @@ sub find_changes
 			{
 				$say_old_hardware_led_error = "#!string!state_0039!#";
 			}
-			elsif ($old_hardware_led_error eq "on")
+			elsif ($old_hardware_led_error eq "off")
 			{
 				$say_old_hardware_led_error = "#!string!state_0040!#";
 			}
@@ -1203,7 +1203,7 @@ sub collect_data
 sub collect_led_states
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_led_states" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# I need to know what kind of machine I am. 
 	my $manufacturer = "";
