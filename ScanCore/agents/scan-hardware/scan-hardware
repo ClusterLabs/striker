@@ -446,7 +446,7 @@ sub find_changes
 	{
 		$say_new_hardware_led_id = "#!string!state_0039!#";
 	}
-	elsif ($new_hardware_led_id eq "on")
+	elsif ($new_hardware_led_id eq "off")
 	{
 		$say_new_hardware_led_id = "#!string!state_0040!#";
 	}
@@ -455,7 +455,7 @@ sub find_changes
 	{
 		$say_new_hardware_led_css = "#!string!state_0039!#";
 	}
-	elsif ($new_hardware_led_css eq "on")
+	elsif ($new_hardware_led_css eq "off")
 	{
 		$say_new_hardware_led_css = "#!string!state_0040!#";
 	}
@@ -464,7 +464,7 @@ sub find_changes
 	{
 		$say_new_hardware_led_error = "#!string!state_0039!#";
 	}
-	elsif ($new_hardware_led_error eq "on")
+	elsif ($new_hardware_led_error eq "off")
 	{
 		$say_new_hardware_led_error = "#!string!state_0040!#";
 	}
