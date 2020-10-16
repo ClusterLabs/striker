@@ -13622,6 +13622,15 @@ sub get_controller_info
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			if ($value =~ /^0x\w+$/)
+			{
+				# Hex value, leave it alone
+				$an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "controller::serial_number::${serial_number}::${type}::${variable}", value1 => $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
 			if (($value =~ /^(\d+\s*[A-Za-z]+B)$/i) or ($value =~ /^(\d+\.\d+\s*[A-Za-z]+B)$/i))
 			{
 				my $size  = $1;
