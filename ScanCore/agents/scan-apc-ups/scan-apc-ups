@@ -2508,7 +2508,7 @@ WHERE
 				}
 				
 				# Has the maximum input voltage seen in the last 60 seconds changed?
-				if ($new_apc_ups_input_1m_maximum_input_voltage > $old_apc_ups_input_1m_maximum_input_voltage)
+				if ($new_apc_ups_input_1m_maximum_input_voltage ne $old_apc_ups_input_1m_maximum_input_voltage)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "new_apc_ups_input_1m_maximum_input_voltage", value1 => $new_apc_ups_input_1m_maximum_input_voltage, 
@@ -2530,7 +2530,7 @@ WHERE
 				}
 				
 				# Has the minimum input voltage seen in the last 60 seconds changed?
-				if ($new_apc_ups_input_1m_maximum_input_voltage > $old_apc_ups_input_1m_maximum_input_voltage)
+				if ($new_apc_ups_input_1m_minimum_input_voltage ne $old_apc_ups_input_1m_minimum_input_voltage)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "new_apc_ups_input_1m_minimum_input_voltage", value1 => $new_apc_ups_input_1m_minimum_input_voltage, 
@@ -2624,7 +2624,7 @@ WHERE
 				}
 				
 				# Has the time on batteries value changed?
-				if ($new_apc_ups_output_time_on_batteries > $old_apc_ups_output_load_percentage)
+				if ($new_apc_ups_output_time_on_batteries > $old_apc_ups_output_time_on_batteries)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "new_apc_ups_output_time_on_batteries", value1 => $new_apc_ups_output_time_on_batteries, 

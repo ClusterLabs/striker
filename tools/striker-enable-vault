@@ -1,0 +1,174 @@
+#!/usr/bin/perl
+# 
+# This adjusts the host's repos to enable CentOS Vault and disable the CentOS other repos.
+# 
+# Return Codes:
+# 0  = OK
+# 1  = Not run on a node.
+# 
+
+use strict;
+use warnings;
+
+print "Checking to see if CentOS Vault needs to be enabled.\n";
+
+our $debug   = 1;
+my $repo_dir = '/etc/yum.repos.d/';
+local(*DIRECTORY);
+opendir(DIRECTORY, $repo_dir);
+print "- Opened: [".$repo_dir."]\n" if $debug;
+while(my $file = readdir(DIRECTORY))
+{
+	next if $file eq ".";
+	next if $file eq "..";
+	next if $file !~ /^CentOS-/;
+	
+	my $full_path = $repo_dir."/".$file;
+	print "- File: [".$full_path."]\n";
+	
+	if ($file eq "CentOS-Vault.repo")
+	{
+		print "Checking the vault repo config now.\n";
+		my $update   = 0;
+		my $old_body = read_file($full_path);
+		my $new_body = "# CentOS-Vault.repo
+#
+# CentOS Vault holds packages from previous releases within the same CentOS Version
+# these are packages obsoleted by the current release and should usually not 
+# be used in production
+#-----------------
+
+[C6.10-base]
+name=CentOS-6.10 - Base
+baseurl=http://vault.centos.org/6.10/os/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=1
+
+[C6.10-updates]
+name=CentOS-6.10 - Updates
+baseurl=http://vault.centos.org/6.10/updates/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=1
+
+[C6.10-extras]
+name=CentOS-6.10 - Extras
+baseurl=http://vault.centos.org/6.10/extras/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=1
+
+[C6.10-contrib]
+name=CentOS-6.10 - Contrib
+baseurl=http://vault.centos.org/6.10/contrib/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=0
+
+[C6.10-centosplus]
+name=CentOS-6.10 - CentOSPlus
+baseurl=http://vault.centos.org/6.10/centosplus/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=0
+";
+		if ($old_body ne $new_body)
+		{
+			print "- Backing up the original vault repo.\n";
+			backup($file, $repo_dir);
+			print "Writing the new vault repo.\n";
+			write_file($full_path, $new_body);
+		}
+	}
+	else
+	{
+		# Back it up and then remove it.
+		print "- Backing up: [".$full_path."] and then removing it... ";
+		backup($file, $repo_dir);
+		print "Removing... ";
+		unlink $full_path or die "Failed to remove: [".$full_path."], the error was: [".$!."]\n";
+		print "Done.\n";
+	}
+}
+closedir(DIRECTORY);
+
+
+
+exit(0);
+
+sub write_file
+{
+	my ($full_path, $new_body) = @_;
+	
+	print "- Writing: [".$full_path."]... ";
+	open (my $file_handle, ">", $full_path) or die "Failed to write: [".$full_path."], error was: [".$!."]\n";;
+	print $file_handle $new_body;
+	close $file_handle;
+	print "Done.\n";
+	
+	return(0);
+}
+
+sub backup
+{
+	my ($file, $directory) = @_;
+	
+	my $backup_dir = '/root/backups';
+	if (not -d $backup_dir)
+	{
+		print "- Creating the backup directory: [".$backup_dir."]... ";
+		mkdir $backup_dir or die "Failed to create: [".$backup_dir."]\n";
+		if (-d $backup_dir)
+		{
+			print "Success.\n";
+		}
+		else
+		{
+			print "Failed, exiting.\n";
+			exit(1);
+		}
+	}
+	
+	my $source_file = $directory."/".$file;
+	my $target_file = $backup_dir."/".$file;
+	if (-e $target_file)
+	{
+		print "- The backup file: [".$target_file."] already exists, skipping the backup.\n";
+	}
+	else
+	{
+		my $shell_call = "rsync -av ".$source_file." ".$backup_dir."/";
+		print "- shell_call: [".$shell_call."]\n" if $debug;
+		print "- Backing up: [".$source_file."] to: [".$target_file."]... ";
+		open (my $file_handle, $shell_call." 2>&1 |") or die "Failed to call: [".$shell_call."], error was: [".$!."]\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+		}
+		close $file_handle;
+		print "Done.\n";
+	}
+	
+	return(0);
+}
+
+sub read_file
+{
+	my ($full_path) = @_;
+	my $file_body   = "";
+	
+	print "- Reading: [".$full_path."]... " if $debug;
+	open (my $file_handle, "<", $full_path) or die "Failed to read: [".$full_path."], error was: [".$!."]\n";
+	while(<$file_handle>)
+	{
+		### NOTE: Don't chop this, we want to record exactly what we read
+		$file_body .= $_;
+	}
+	close $file_handle;
+	print "- Done.\n";
+	print "- file_body:\n====\n".$file_body."\n====\n" if $debug;
+	
+	return($file_body);
+}

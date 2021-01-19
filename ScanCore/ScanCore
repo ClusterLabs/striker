@@ -5078,7 +5078,7 @@ sub translate_sensor_name
 	
 	my $say_sensor_name = $ipmitool_sensor_name;
 	
-	# Now, if it is a sensor we know, we'll not use the base units but instead five it a proper name. 
+	# Now, if it is a sensor we know, we'll not use the base units but instead give it a proper name. 
 	# We'll translate the value after.
 	my $say_units = $ipmitool_sensor_units;
 	if ($ipmitool_sensor_units eq "C")
