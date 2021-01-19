@@ -73,7 +73,11 @@ gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
 enabled=0
 ";
-		if ($old_body ne $new_body)
+		if ($old_body eq $new_body)
+		{
+			print "- Vault is already enabled.\n";
+		}
+		else
 		{
 			print "- Backing up the original vault repo.\n";
 			backup($file, $repo_dir);
@@ -84,9 +88,8 @@ enabled=0
 	else
 	{
 		# Back it up and then remove it.
-		print "- Backing up: [".$full_path."] and then removing it... ";
 		backup($file, $repo_dir);
-		print "Removing... ";
+		print "Removing: [".$full_path."]... ";
 		unlink $full_path or die "Failed to remove: [".$full_path."], the error was: [".$!."]\n";
 		print "Done.\n";
 	}
@@ -134,7 +137,7 @@ sub backup
 	my $target_file = $backup_dir."/".$file;
 	if (-e $target_file)
 	{
-		print "- The backup file: [".$target_file."] already exists, skipping the backup.\n";
+		print "Skipped.\n- The backup file: [".$target_file."] already exists, skipping the backup.\n";
 	}
 	else
 	{
@@ -168,7 +171,7 @@ sub read_file
 	}
 	close $file_handle;
 	print "- Done.\n";
-	print "- file_body:\n====\n".$file_body."\n====\n" if $debug;
+	#print "- file_body:\n====\n".$file_body."\n====\n" if $debug;
 	
 	return($file_body);
 }

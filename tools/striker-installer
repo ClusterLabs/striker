@@ -839,6 +839,9 @@ else
 	logger($conf, $THIS_FILE, __LINE__, "Command line switches appear sane, proceeding.", 3);
 }
 
+# Make sure that the Vault repo is enabled and others are not.
+enable_vault_repo($conf);
+
 # Make sure we're on EL6.x
 verify_os($conf);
 
@@ -979,6 +982,111 @@ exit(0);
 # Here be function!                                                           #
 ###############################################################################
 
+sub enable_vault_repo
+{
+	my ($conf) = @_;
+	
+	print "Checking to see if CentOS Vault needs to be enabled.\n";
+
+	my $repo_dir = '/etc/yum.repos.d/';
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $repo_dir);
+	logger($conf, $THIS_FILE, __LINE__, "- Opened: [".$repo_dir."]", 1);
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file eq ".";
+		next if $file eq "..";
+		next if $file !~ /^CentOS-/;
+		
+		my $full_path = $repo_dir."/".$file;
+		print "- File: [".$full_path."]\n";
+		
+		if ($file eq "CentOS-Vault.repo")
+		{
+			print "Checking the vault repo config now.\n";
+			my $update   = 0;
+			my $old_body = "";
+			
+			open (my $file_handle, "<", $full_path) or die "Failed to read: [".$full_path."], error was: [".$!."]\n";
+			while(<$file_handle>)
+			{
+				$old_body .= $_;
+			}
+			close $file_handle;
+			
+			my $new_body = "# CentOS-Vault.repo
+#
+# CentOS Vault holds packages from previous releases within the same CentOS Version
+# these are packages obsoleted by the current release and should usually not 
+# be used in production
+#-----------------
+
+[C6.10-base]
+name=CentOS-6.10 - Base
+baseurl=http://vault.centos.org/6.10/os/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=1
+
+[C6.10-updates]
+name=CentOS-6.10 - Updates
+baseurl=http://vault.centos.org/6.10/updates/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=1
+
+[C6.10-extras]
+name=CentOS-6.10 - Extras
+baseurl=http://vault.centos.org/6.10/extras/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=1
+
+[C6.10-contrib]
+name=CentOS-6.10 - Contrib
+baseurl=http://vault.centos.org/6.10/contrib/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=0
+
+[C6.10-centosplus]
+name=CentOS-6.10 - CentOSPlus
+baseurl=http://vault.centos.org/6.10/centosplus/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+enabled=0
+";
+			if ($old_body eq $new_body)
+			{
+				print "- Vault is already enabled.\n";
+			}
+			else
+			{
+				print "- Backing up the original vault repo.\n";
+				backup_file($conf, $full_path);
+				
+				print "Writing the new vault repo... ";
+				open (my $file_handle, ">", $full_path) or die "Failed to write: [".$full_path."], error was: [".$!."]\n";;
+				print $file_handle $new_body;
+				close $file_handle;
+				print "Done.\n";
+			}
+		}
+		else
+		{
+			# Back it up and then remove it.
+			print "- Backing up: [".$full_path."]\n";
+			backup_file($conf, $full_path);
+			print "- Removing: [".$full_path."]\n";
+			unlink $full_path or die "Failed to remove: [".$full_path."], the error was: [".$!."]\n";
+			print "- Done.\n";
+		}
+	}
+	closedir(DIRECTORY);
+
+	return(0);
+}
+
 # This adds the an-repo, if needed.
 sub add_an_repo
 {
@@ -1025,10 +1133,38 @@ sub compile_network_drivers
 	### For now, this only supports the AXIS 
 	# First, if setup where we'll find the ASIX driver.
 	my $driver_directory = "/var/www/html/".$conf->{pxe}{centos}{short_name}."/x86_64/img/Tools/ASIX";
-	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."].", 2);
+	logger($conf, $THIS_FILE, __LINE__, "sys::is_rhel: [".$conf->{sys}{is_rhel}."], switches::source: [".$conf->{switches}{source}."].", 1);
 	if ($conf->{switches}{source})
 	{
 		$driver_directory = $conf->{switches}{source}."/Tools/ASIX";
+		
+		# Make sure we've got our dependencies installed.
+		verify_internet_access($conf, 0);
+		if ($conf->{sys}{internet_access})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Some packages are needed to compile the network drivers. Checking to see if they're installed now.", 1);
+			if (-e $conf->{path}{last_kernel})
+			{
+				# Remove any previous possibly-failed attempts.
+				unlink $conf->{path}{last_kernel};
+			}
+			my $shell_call = $conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." install unzip kernel-devel-\$(uname -r) kernel-source-\$(uname -r) kernel-headers-\$(uname -r) gcc";
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				print $_;
+			}
+			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+			close $file_handle;
+		}
+		else
+		{
+			# Remind the user that they may need to install the needed packaged.
+			logger($conf, $THIS_FILE, __LINE__, "- [ Warning ] - No internet access detected! Building the network drivers requires that build tools, not included with minimal installs, be available. The compilation of the driver may fail!", 1);
+		}
+			
 	}
 	elsif ($conf->{sys}{is_rhel})
 	{
@@ -2829,10 +2965,10 @@ priority=1
 	
 	# Finally, call createrepo to update our RPM repodata.
 	logger($conf, $THIS_FILE, __LINE__, "- Generating updated RPM repo data for the local repo.", 0);
-	my $shell_call = $conf->{executable}{createrepo}." /var/www/html/".$os_dir."/x86_64/img";
+	$shell_call = $conf->{executable}{createrepo}." /var/www/html/".$os_dir."/x86_64/img";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		print $_;
