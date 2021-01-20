@@ -19890,7 +19890,12 @@ sub _do_os_update
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." update";
+	# This checks and enables the Vault repo.
+	my $shell_call = "if [ -e '/sbin/striker/striker-enable-vault' ];
+then 
+    /sbin/striker/striker-enable-vault; 
+fi;
+".$an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." update";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
