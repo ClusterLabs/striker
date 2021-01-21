@@ -1353,6 +1353,7 @@ sub _set_paths
 	$an->data->{path}{do_dd}                           = "/sbin/striker/do_dd";
 	$an->data->{path}{'striker-configure-vmm'}         = "/sbin/striker/striker-configure-vmm";
 	$an->data->{path}{'striker-delete-anvil'}          = "/sbin/striker/striker-delete-anvil";
+	$an->data->{path}{'striker-enable-vault'}          = "/sbin/striker/striker-enable-vault";
 	$an->data->{path}{'striker-merge-dashboards'}      = "/sbin/striker/striker-merge-dashboards";
 	$an->data->{path}{'striker-change-password'}       = "/sbin/striker/striker-change-password";
 	$an->data->{path}{'striker-push-ssh'}              = "/sbin/striker/striker-push-ssh";

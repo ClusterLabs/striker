@@ -19890,6 +19890,18 @@ sub _do_os_update
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $return_code = $an->Storage->rsync({
+		target      => $target,
+		port        => $port, 
+		password    => $password,
+		source      => $an->data->{path}{'striker-enable-vault'},
+		destination => "root\@".$target.":/sbin/striker/",
+		switches    => $an->data->{args}{rsync},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# This checks and enables the Vault repo.
 	my $shell_call = "if [ -e '/sbin/striker/striker-enable-vault' ];
 then 
