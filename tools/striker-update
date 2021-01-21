@@ -1141,54 +1141,6 @@ sub update_all
 		{
 			print "- Online, good.\n";
 			$dashboards->{$peer_name} = $peer_password;
-			
-			# This will copy the local 'striker-enable-vault' script to the target and run it.
-			if (-f $an->data->{path}{'striker-enable-vault'})
-			{
-				print "- Enabling CentOS Vault on: [".$peer_name."]\n";
-				print "- Copying over: [".$an->data->{path}{'striker-enable-vault'}."].\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "peer_name",                  value1 => $peer_name,
-					name2 => "path::striker-enable-vault", value2 => $an->data->{path}{'striker-enable-vault'},
-				}, file => $THIS_FILE, line => __LINE__});
-				my $return_code = $an->Storage->rsync({
-					target      => $peer_name,
-					port        => $peer_port, 
-					password    => $peer_password,
-					source      => $an->data->{path}{'striker-enable-vault'},
-					destination => "root\@".$peer_name.":/sbin/striker/",
-					switches    => "-avAX",
-				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "return_code", value1 => $return_code, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Now run it
-				my $shell_call = $an->data->{path}{'striker-enable-vault'};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "peer_name",  value1 => $peer_name,
-					name2 => "shell_call", value2 => $shell_call,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-					name1 => "peer_password", value1 => $peer_password,
-				}, file => $THIS_FILE, line => __LINE__});
-				print "/-----[ Command output ]------------------------------------------------------\n";
-				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-					target     => $peer_name,
-					port       => 22, 
-					password   => $peer_password,
-					shell_call => $shell_call,
-				});
-				foreach my $line (@{$return})
-				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line,
-					}, file => $THIS_FILE, line => __LINE__});
-					print "| $line\n";
-				}
-				print "- CentOS Vault should now be enabled.\n";
-				print "\\-----------------------------------------------------------------------------\n";
-			}
 		}
 		else
 		{
@@ -2522,6 +2474,7 @@ done
 			# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
 			# reboot when we exit.
 			print "Updating the operating system on the local machine now. Please be patient.\n";
+			
 			print "- If any dashboard repositories are still set to 'priority=1', they will be\n";
 			print "  updated to remove this constraint.\n";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2610,6 +2563,57 @@ done
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "password", value1 => $password,
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "path::striker-enable-vault", value1 => $an->data->{path}{'striker-enable-vault'},
+			}, file => $THIS_FILE, line => __LINE__});
+			if (-f $an->data->{path}{'striker-enable-vault'})
+			{
+				print "- Enabling CentOS Vault on: [".$target."]\n";
+				print "- Copying over: [".$an->data->{path}{'striker-enable-vault'}."].\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",                     value1 => $target,
+					name2 => "path::striker-enable-vault", value2 => $an->data->{path}{'striker-enable-vault'},
+				}, file => $THIS_FILE, line => __LINE__});
+				my $return_code = $an->Storage->rsync({
+					target      => $target,
+					port        => $port, 
+					password    => $password,
+					source      => $an->data->{path}{'striker-enable-vault'},
+					destination => "root\@".$target.":/sbin/striker/",
+					switches    => "-avAX",
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Now run it
+				my $shell_call = $an->data->{path}{'striker-enable-vault'};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "password", value1 => $password,
+				}, file => $THIS_FILE, line => __LINE__});
+				print "/-----[ Command output ]------------------------------------------------------\n";
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target     => $target,
+					port       => 22, 
+					password   => $password,
+					shell_call => $shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
+					print "| $line\n";
+				}
+				print "- CentOS Vault should now be enabled.\n";
+				print "\\-----------------------------------------------------------------------------\n";
+			}
+			
 			print "/-----[ Command output ]------------------------------------------------------\n";
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target     => $target,
@@ -3098,15 +3102,6 @@ sub check_anvil
 	
 	# Get the node info
 	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
-	if (not exists $an->data->{vault_check}{anvil_uuid}{$anvil_uuid})
-	{
-		$an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{node1} = 0;
-		$an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{node2} = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "vault_check::anvil_uuid::${anvil_uuid}::node1", value1 => $an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{node1},
-			name2 => "vault_check::anvil_uuid::${anvil_uuid}::node2", value2 => $an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{node2},
-		}, file => $THIS_FILE, line => __LINE__});
-	}
 	
 	my $use_node = "";
 	foreach my $node_key ("node1", "node2")
@@ -3120,61 +3115,6 @@ sub check_anvil
 		{
 			print "- Online, good.\n";
 			check_cluster_and_storage($an, $node_key);
-			
-			if ((-f $an->data->{path}{'striker-enable-vault'}) && (not $an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{$node_key}))
-			{
-				my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
-				my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
-				my $password = $an->data->{sys}{anvil}{$node_key}{password};
-				print "- Enabling CentOS Vault on: [".$target."]\n";
-				print "- Copying over: [".$an->data->{path}{'striker-enable-vault'}."].\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "target",                     value1 => $target,
-					name2 => "path::striker-enable-vault", value2 => $an->data->{path}{'striker-enable-vault'},
-				}, file => $THIS_FILE, line => __LINE__});
-				my $return_code = $an->Storage->rsync({
-					target      => $target,
-					port        => $port, 
-					password    => $password,
-					source      => $an->data->{path}{'striker-enable-vault'},
-					destination => "root\@".$target.":/sbin/striker/",
-					switches    => "-avAX",
-				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "return_code", value1 => $return_code, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Now run it
-				my $shell_call = $an->data->{path}{'striker-enable-vault'};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "target",     value1 => $target,
-					name2 => "shell_call", value2 => $shell_call,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-					name1 => "password", value1 => $password,
-				}, file => $THIS_FILE, line => __LINE__});
-				print "/-----[ Command output ]------------------------------------------------------\n";
-				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-					target     => $target,
-					port       => 22, 
-					password   => $password,
-					shell_call => $shell_call,
-				});
-				foreach my $line (@{$return})
-				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line,
-					}, file => $THIS_FILE, line => __LINE__});
-					print "| $line\n";
-				}
-				print "- CentOS Vault should now be enabled.\n";
-				print "\\-----------------------------------------------------------------------------\n";
-				
-				$an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{$node_key} = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "vault_check::anvil_uuid::${anvil_uuid}::${node_key}", value1 => $an->data->{vault_check}{anvil_uuid}{$anvil_uuid}{$node_key},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
 		}
 		else
 		{
@@ -4204,6 +4144,36 @@ sub download_os_updates
 	if ($an->data->{switches}{offline})
 	{
 		$shell_call = $an->data->{path}{yum}." -y update --downloadonly --disablerepo=* --enablerepo=*striker*";
+	}
+	else
+	{
+		# This will copy the local 'striker-enable-vault' script to the target and run it.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::striker-enable-vault", value1 => $an->data->{path}{'striker-enable-vault'},
+		}, file => $THIS_FILE, line => __LINE__});
+		if (-f $an->data->{path}{'striker-enable-vault'})
+		{
+			print "- Enabling CentOS Vault\n";
+			
+			# Run it
+			my $shell_call = $an->data->{path}{'striker-enable-vault'};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			print "/-----[ Command output ]------------------------------------------------------\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				print "| $line\n"; 
+			}
+			print "- CentOS Vault should now be enabled.\n";
+			print "\\-----------------------------------------------------------------------------\n";
+		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
