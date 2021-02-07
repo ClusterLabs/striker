@@ -62,6 +62,9 @@ As soon as its storage is 'UpToDate', it will be ready to take over servers.
 		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
 		<key name="scan_clustat_note_0029">The server: [#!variable!service!#] recovered from a failed state.</key>
 		<key name="scan_clustat_note_0030">The server: [#!variable!service!#] is off, so its failed state was cleared. It is now in the disabled state.</key>
+		<key name="scan_clustat_note_0031">There are two or more 'clustat_uuid' entries for this host. This should not happen and is the result of a program issue. We'll fix this, but it might trigger additional alerts as services may detect as found or changed.</key>
+		<key name="scan_clustat_note_0032">The 'clustat_uuid': [#!variable!clustat_uuid!#] has the most services and nodes referencing it, so we'll preserve this one and delete the rest.</key>
+		<key name="scan_clustat_note_0033">Removing any references to the 'clustat_uuid': [#!variable!clustat_uuid!#].</key>
 		
 		<!-- Warnings. -->
 		<key name="scan_clustat_warning_0001">#!free!#</key>

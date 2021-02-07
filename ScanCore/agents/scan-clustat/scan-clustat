@@ -241,6 +241,149 @@ sub update_db
 		$an->DB->locking({release => 1});
 	}
 	
+	# On occassion, sub-selects can end up with 2x results, breaking this agent. These checks will detect
+	# that problem and correct it.
+	my $results = $an->DB->do_db_query({query => $an->data->{sys}{clustat_uuid_query}, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::clustat_uuid_query", value1 => $an->data->{sys}{clustat_uuid_query}, 
+		name2 => "count",                   value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($count > 1)
+	{
+		# We need to clean this up.
+		cleanup_multiple_clustat_uuids($an, $results);
+	}
+	
+	return(0);
+}
+
+sub cleanup_multiple_clustat_uuids
+{
+	my ($an, $results) = @_;
+	
+	# Register a notice-level alert to indicate what's going on.
+# 	$an->Alert->register_alert({
+# 		alert_level		=>	"notice", 
+# 		alert_agent_name	=>	$THIS_FILE,
+# 		alert_title_key		=>	"an_alert_title_0003",
+# 		alert_message_key	=>	"scan_clustat_note_0031",
+# 		alert_message_variables	=>	{},
+# 	});
+	$an->Log->entry({log_level => 1, message_key => "scan_clustat_note_0031", file => $THIS_FILE, line => __LINE__});
+	
+	# For each UUID, count how many referenced entries exist in clustat_service and clustat_node. The one
+	# with the most will be preserved and the other(s) deleted.
+	my $preserve_uuid = "";
+	my $highest_count = 0;
+	my $uuid_counts   = {};
+	foreach my $row (@{$results})
+	{
+		my $clustat_uuid = $row->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "clustat_uuid", value1 => $clustat_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$uuid_counts->{$clustat_uuid} = 0;
+		
+		my $query   = "SELECT COUNT(*) FROM clustat_service WHERE clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = $results->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query", value1 => $query, 
+			name2 => "count", value2 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$uuid_counts->{$clustat_uuid} += $count;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uuid_counts->{$clustat_uuid}", value1 => $uuid_counts->{$clustat_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$query   = "SELECT COUNT(*) FROM clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		$count   = $results->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query", value1 => $query, 
+			name2 => "count", value2 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$uuid_counts->{$clustat_uuid} += $count;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uuid_counts->{$clustat_uuid}", value1 => $uuid_counts->{$clustat_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($uuid_counts->{$clustat_uuid} > $highest_count)
+		{
+			$preserve_uuid = $clustat_uuid;
+			$highest_count = $uuid_counts->{$clustat_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "preserve_uuid", value1 => $preserve_uuid, 
+				name2 => "highest_count", value2 => $highest_count, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	foreach my $clustat_uuid (keys %{$uuid_counts})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "clustat_uuid", value1 => $clustat_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# This is a catch in the off chance that 'preserve_uuid' wasn't set.
+		if (not $preserve_uuid)
+		{
+			$preserve_uuid = $clustat_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "preserve_uuid", value1 => $preserve_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Skip if this is the UUID we're preserving
+		if ($clustat_uuid eq $preserve_uuid)
+		{
+			# Skip
+			$an->Log->entry({log_level => 1, message_key => "scan_clustat_note_0032", message_variables => {
+				clustat_uuid => $clustat_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		$an->Log->entry({log_level => 1, message_key => "scan_clustat_note_0033", message_variables => {
+			clustat_uuid => $clustat_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "DELETE FROM history.clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		$query = "DELETE FROM clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		$query = "DELETE FROM history.clustat_service WHERE clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		$query = "DELETE FROM clustat_service WHERE clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		$query = "DELETE FROM clustat WHERE clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).";";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	
+	exit(0);
+	
 	return(0);
 }
 
