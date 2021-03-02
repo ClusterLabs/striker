@@ -241,7 +241,7 @@ sub process_health
 		if (($peer_ram_total > $hardware_ram_total) && ($difference > 1073741824))
 		{
 			# Mark us as having a fairly major health issue.
-			print $THIS_FILE." ".__LINE__."; difference\n";
+			#print $THIS_FILE." ".__LINE__."; difference\n";
 			my $set = $an->Alert->check_alert_sent({
 				type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
 				alert_sent_by		=>	$THIS_FILE,
@@ -332,10 +332,10 @@ INSERT INTO
 			{
 				# Clear the warning
 				$an->Alert->register_alert({
-					alert_level		=>	"clear", 
+					alert_level		=>	"warning", 
 					alert_agent_name	=>	$THIS_FILE,
 					alert_sort		=>	$an->data->{sys}{alert_sort}++,
-					alert_title_key		=>	"an_alert_title_0004",
+					alert_title_key		=>	"an_alert_title_0006",
 					alert_message_key	=>	"scan_hardware_note_0010",
 					alert_message_variables	=>	{
 						difference => $an->Readable->bytes_to_hr({'bytes' => $difference})." (".$an->Readable->comma($difference)." #!string!suffix_0009!#)", 
@@ -960,10 +960,19 @@ INSERT INTO
 		my $old_hardware_ram_module_manufacturer  = $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_manufacturer};
 		my $old_hardware_ram_module_model         = $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_model};
 		my $old_hardware_ram_module_serial_number = $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "old_hardware_ram_module_size",          value1 => $old_hardware_ram_module_size,
+			name2 => "old_hardware_ram_module_manufacturer",  value2 => $old_hardware_ram_module_manufacturer,
+			name3 => "old_hardware_ram_module_model",         value3 => $old_hardware_ram_module_model,
+			name4 => "old_hardware_ram_module_serial_number", value4 => $old_hardware_ram_module_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Delete the entry so we know we've processed this existing module.
 		delete $an->data->{sql}{hardware_ram_module_uuid}{$hardware_ram_module_locator};
 		delete $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid};
+		
+		# If the manufacturer is already 'DELETED', skip.
+		next if $old_hardware_ram_module_manufacturer eq "VANISHED";
 		
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
@@ -972,7 +981,7 @@ INSERT INTO
 			alert_title_key		=>	"an_alert_title_0004",
 			alert_message_key	=>	"scan_hardware_note_0007",
 			alert_message_variables	=>	{
-				locator       => $hardware_ram_module_locator,
+				locator           => $hardware_ram_module_locator,
 				old_size          => $an->Readable->bytes_to_hr({'bytes' => $old_hardware_ram_module_size})." (".$an->Readable->comma($old_hardware_ram_module_size)." #!string!suffix_0009!#)",
 				old_manufacturer  => $old_hardware_ram_module_manufacturer, 
 				old_model         => $old_hardware_ram_module_model, 
@@ -984,10 +993,10 @@ INSERT INTO
 UPDATE 
     hardware_ram_modules 
 SET
-    hardware_ram_module_manufacturer  = 'VANISHED', 
-    modified_date                     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    hardware_ram_module_manufacturer = 'VANISHED', 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    hardware_ram_module_uuid          = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_uuid)." 
+    hardware_ram_module_uuid         = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_uuid)." 
 ;";
 		# Now record the query in the array
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
