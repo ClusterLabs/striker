@@ -3436,6 +3436,9 @@ sub query_ipmi_targets
 			next if $sensor_name eq "BBU";
 			next if $sensor_name eq "RAID Controller";
 			
+			# This recordds when the event log is full, which is not a hardware issue.
+			next if $sensor_name eq "SEL_FULLNESS";
+			
 			# The status line is NOT NULL, so I need to change it to 'na' (not available).
 			$status = "na" if $status eq "NULL";
 			
