@@ -523,7 +523,6 @@ sub find_changes
 		    ($new_hardware_ram_total    ne $old_hardware_ram_total)    or 
 		    ($new_hardware_memory_total ne $old_hardware_memory_total) or 
 		    ($new_hardware_swap_total   ne $old_hardware_swap_total)   or 
-		    ($new_hardware_led_id       ne $old_hardware_led_id)       or 
 		    ($new_hardware_led_css      ne $old_hardware_led_css)      or 
 		    ($new_hardware_led_error    ne $old_hardware_led_error))
 		{

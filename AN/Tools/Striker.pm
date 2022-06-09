@@ -3503,7 +3503,7 @@ sub _check_lv
 	
 	$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{active} = $an->data->{node}{$node_name}{lvm}{lv}{$lv}{active};
 	$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{total_size} });
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "node::${node_name}::lvm::lv::${lv}::active",               value1 => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{active},
 		name2 => "node::${node_name}::lvm::lv::${lv}::total_size",           value2 => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{total_size},
 		name3 => "server::${server}::node::${node_name}::lv::${lv}::active", value3 => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{active},

@@ -4633,7 +4633,7 @@ sub get_latest_version
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_latest_version" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set        = 0;
-	my $shell_call = $an->data->{path}{curl}." 2>/dev/null ".$an->data->{url}{striker_latest};
+	my $shell_call = $an->data->{path}{curl}." -L 2>/dev/null ".$an->data->{url}{striker_latest};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4719,7 +4719,7 @@ sub download_file
 	# Get the file size so that we can warn the user
 	my $out_file   = $target;
 	my $size       = 0;
-	my $shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" 2>/dev/null --head $source";
+	my $shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" -L 2>/dev/null --head $source";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4762,7 +4762,7 @@ sub download_file
 	
 	### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
 	###       debug is enabled, we'll dump the progress to the screen.
-	$shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" $source 2>/dev/null > $target";
+	$shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" -L $source 2>/dev/null > $target";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
