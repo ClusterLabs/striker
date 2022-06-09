@@ -138,12 +138,12 @@ my $an = AN::Tools->new({
 		},
 		url			=>	{
 			# By default, we will read the latest release from 'striker_latest'. If, however, we can't
-			# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
-			# master with '--master', in which case we will download the 'striker_master' URL. In all
+			# access that file, we'll use 'striker_default'. Optionally, the user can request a branch
+			# with '--branch [branch_name]', in which case we will download the 'striker_source_prefix'.'branch_name' URL. In all
 			# cases, the downloaded file will be saved as 'striker_zip_file'.
 			striker_default		=>	"https://github.com/ClusterLabs/striker/archive/v2.0.9.zip",
 			striker_latest		=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
-			striker_master		=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
+			striker_source_prefix	=>	"https://codeload.github.com/ClusterLabs/striker/zip/",
 			support			=>	"https://alteeve.com/w/Support",
 			ping_targets		=>	"8.8.8.8,google.com,redhat.com,alteeve.com",
 		},
@@ -318,15 +318,24 @@ else
 	$show_anvil_warning = 0;
 }
 
+my $is_branch_switch_set = (($an->data->{switches}{branch}) && ($an->data->{switches}{branch} ne "#!SET!#"));
+
 if ($an->data->{switches}{'no-refresh'})
 {
 	print "We will NOT refresh our local copy of the Striker source code. If it exists,\n";
 	print "we will use what is already cached in:\n";
 	print "- Striker: [".$an->data->{path}{updates}{striker}."]\n\n";
 }
-elsif (($an->data->{switches}{master}) && (not $an->data->{switches}{offline}))
+elsif (($an->data->{switches}{master} or $is_branch_switch_set) && (not $an->data->{switches}{offline}))
 {
-	print "We will download the latest source code from GitHub's master branch.\n";
+	if ($an->data->{switches}{master})
+	{
+		$an->data->{switches}{branch} = "master";
+	}
+
+	$an->data->{url}{striker_branch} = $an->data->{url}{striker_source_prefix} . $an->data->{switches}{branch};
+
+	print "We will download the latest source code from GitHub's [".$an->data->{switches}{branch}."] branch.\n";
 	print "- NOTE: This should only be done on test and development platforms!\n\n";
 }
 else
@@ -426,20 +435,20 @@ if (not $an->data->{sys}{offline})
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "striker_source_test", value1 => $striker_source_test,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{switches}{master})
+		if ($an->data->{switches}{branch})
 		{
-			print "- Downloading: [".$an->data->{url}{striker_master}."]\n";
+			print "- Downloading: [".$an->data->{url}{striker_branch}."]\n";
 			if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
 			{
 				print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
 			}
 			else
 			{
-				print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
+				print "\n[ Warning ] - ".$an->data->{switches}{branch}." branch requested. This should be used by developers and\n";
 				print "              testers only. Please don't use this in production!\n\n";
 				$an->data->{sys}{install_master} = 1;
 				sleep 3;
-				download_and_extract_source($an, $an->data->{url}{striker_master});
+				download_and_extract_source($an, $an->data->{url}{striker_branch});
 			}
 		}
 		else
@@ -4656,10 +4665,13 @@ sub get_latest_version
 		}
 		if ($line =~ /^master:(http.*)$/)
 		{
-			$an->data->{url}{striker_master} = $1;
+			if ($an->data->{switches}{branch} eq "master")
+			{
+				$an->data->{url}{striker_branch} = $1;
+			}
 			$set                          = 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "url::striker_master", value1 => $an->data->{url}{striker_master},
+				name1 => "url::striker_branch", value1 => $an->data->{url}{striker_branch},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -4987,10 +4999,16 @@ SWITCHES
 
 	Show this dialogue and exit.
 
+ --branch <branch_name>
+	This will upgrade to a version identified by the given branch name on
+	GitHub: https://github.com/ClusterLabs/striker
+
  --master
 
 	This will upgrade to the latest (master branch) version available on 
 	GitHub: https://github.com/ClusterLabs/striker
+
+	This is equivalent to '--branch master'
 	
 	### WARNING: This is only recommended for developers or testers. Do not
 	###          upgrade to master on production systems!
